@@ -1,0 +1,23 @@
+{
+    "name": "Center for Disease Monitoring",
+    "description": " A simple demo app for whats possible for disease monitoring app.",
+    "version": "0.1",
+    "manifest_version": 2,
+    "offline_enabled": true,
+    "author": "Mustapha D. Kone",
+    "app": {
+        "background": {
+            "scripts": ["background.js"]
+        }
+    },
+    //"sandbox": {
+    //    "pages": [
+    //        "index.html",
+    //        "views/region/list.html",
+   //         "views/countriesProvinces.html"
+    //    ],
+        // content_security_policy is optional.
+    //    "content_security_policy": "sandbox allow-scripts; script-src 'self' 'unsafe-eval'; object-src 'self'"
+   // },*/
+    "icons": { "16": "imgs/cdm-16.png", "128": "imgs/cdm.png" }
+}
