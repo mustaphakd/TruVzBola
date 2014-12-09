@@ -121,6 +121,21 @@ appControllers.controller('mainAppController',['$scope','$route', '$location','s
         "open to the public to see whats happening along with highly secured access control for allowed personnel.  we hope to also develop desktop app and mobile app" +
         " for real-time performance reasons and onsite auditing!", true, true);
 */
+
+        $scope.showPopWindow = function(title, message, scrollbar){
+
+            scrollbar = scrollbar || false;
+
+            var ScreenWidth=window.screen.width;
+            var ScreenHeight=window.screen.height;
+            var movefromedge=0;
+            placementx=(ScreenWidth/2)-((400)/2);
+            placementy=(ScreenHeight/2)-((300+50)/2);
+            WinPop=window.open("About:Blank","","width=400,height=300,toolbar=0,location=false,directories=false,status=0,scrollbars=" + scrollbar + ",menubar=0,resizable=0,left="+placementx+",top="+placementy+",scre enX="+placementx+",screenY="+placementy+",");
+            var msg = "<strong>" + message + "</strong>";
+            WinPop.document.write('<html>\n<head>\n<title>' + title + '</title>></head>\n<body>'+ msg +'</body></html>');
+
+        }
 } ]);
 
 appControllers.controller('hotspotsController', ['$scope', '$routeParams', '$location', 'hotSpotService', function ($scope, $routeParams, $location, hotSpotService) {
@@ -153,7 +168,8 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
     $scope.$routeParams = $routeParams;
 }]);
 
-appControllers.controller('regionController', ['$scope', '$routeParams', '$location', 'regionService', '$q', function ($scope, $routeParams, $location, regionService , $q) {
+appControllers.controller('regionController', ['$scope', '$routeParams', '$location', 'regionService', '$q', '$timeout', '$window', '$interval',
+    function ($scope, $routeParams, $location, regionService , $q, $timeout, $window, $interval) {
     // debugger;
     $scope.regionService = regionService;
     $scope.$routeParams = $routeParams;
@@ -219,6 +235,8 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
 
     /*///////////////////////////////////////////***********************************/
 
+        $scope.addViewModel.newCountryTempArr = [];
+
     $scope.addViewModel.setProcessing = function(enabled)
     {
         if(enabled)
@@ -258,7 +276,7 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
 
             var coordinates = null;
             if( $scope.addViewModel.newModel.coordinates.length > 0){
-                debugger;
+                //debugger;
                 var parsed = JSON.parse($scope.addViewModel.newModel.coordinates);
                 var striinged = JSON.stringify($scope.addViewModel.newModel.coordinates);
                 coordinates = JSON.stringify(parsed);
@@ -266,8 +284,27 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
             }
             $scope.regionService.addNewCountry({name: $scope.addViewModel.newModel.name, coord: coordinates || ""}).then(
                 function(succeed){
+
                     $scope.addViewModel.setProcessing(false);
                     $scope.addViewModel.collapseAddNewCountry();
+
+                    if( $scope.countries != null) {
+                        //debugger;
+                        var obj = succeed;
+                        $scope.countries[0].objects.push(obj);
+
+                        $scope.addViewModel.newCountryTempArr = [];
+                        $scope.addViewModel.newCountryTempArr.push(obj);
+
+                        //var cntryType = { type: "path", objects : $scope.addViewModel.newCountryTempArr};
+
+                        $scope.updateMap(obj);
+                        obj = null;
+                    }
+                    else
+                    {
+                        $scope.updateMap(null);
+                    }
 
                 },
                 function(failMsg){
@@ -301,26 +338,208 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
         $scope.validation.countryName = {errorClass:"", showError:false};
     }
 /*********************Map logic************************************************************************/
-
+    $scope.countries = null;
+    $scope.countriesTimeoutCancelToken = null;
+    $scope.countriesUpdateTimeoutCancelToken = null;
+    $scope.countriesPromese = null;
     $scope.getMap = function(){
-        var prom = $q.defer();
 
-        $scope.regionService.getCountries().then(
-            function(data)
-            {
-                debugger;
-                prom.resolve(data);
-            }
-        );
+            var countriesPromese = $q.defer();
+
+        if($scope.countries == null) {
+            $scope.regionService.getCountries().then(
+                function (data) {
+
+                    $scope.countries = data;
+                    countriesPromese.resolve(data);
+                }
+            );
+        }
+        else {
+            if($scope.countriesTimeoutCancelToken != null)
+               $timeout.cancel($scope.countriesTimeoutCancelToken);
+
+            $scope.countriesTimeoutCancelToken= null;
+
+            $scope.countriesTimeoutCancelToken = $timeout(function(){
+                countriesPromese.resolve($scope.countries);
+                $timeout.cancel($scope.countriesTimeoutCancelToken);
+                $scope.countriesTimeoutCancelToken= null;
+            }, 5);
+        }
 
 
-        return prom.promise;
+        return countriesPromese.promise;
     }
     $scope.countriesClass = "countriesClass";
 
+    $scope.getMapUpdate = function(){
+        if($scope.countriesPromese == null)
+            $scope.countriesPromese = $q.defer();
+
+        return $scope.countriesPromese.promise;
+    }
+
+    $scope.updateMap = function(newModel){
+
+        if($scope.countriesPromese == null)
+            return;
+
+        var nwModel = newModel;
+
+        if($scope.countriesUpdateTimeoutCancelToken != null)
+            $timeout.cancel($scope.countriesUpdateTimeoutCancelToken);
+
+        $scope.countriesPromese.notify(nwModel);
+    }
 
 
-}]);
+        /****************************************************** Import Export Logic *******************/
+        $scope.importExport = {};
+        $scope.importExport.operationBeingProcessed = false;
+        $scope.importExport.title = "";
+        $scope.importExport.buttonTitle = "";
+        $scope.importExport.data = null;
+        $scope.importExport.dataPlaceHolder = "";
+        $scope.importExport.canceled = false;
+        $scope.importExport.opIE = "none";
+        $scope.importExport.cancelButtonTitle = "Close";
+        $scope.importExport.importTimeoutCancelToken = null;
+
+        $scope.importExport.importEnabled = true; // true or false
+        $scope.importExport.exportEnabled = true; // true or false
+
+        $scope.importExport.cancelOperation = function(){
+
+            $scope.importExport.canceled = true;
+
+            if($scope.importExport.operationBeingProcessed == false) {
+                $('.import-export-form-collapse').collapse('hide');
+
+                $scope.importExport.enableImportExport(true);
+                $scope.importExport.opIE = "none";
+                $scope.importExport.cancelButtonTitle = "Close";
+            }
+            else {
+                $scope.importExport.cancelButtonTitle = "Close";
+                $scope.importExport.enableImportExport(false);
+                $scope.importExport.operationBeingProcessed = false;
+
+                switch($scope.importExport.opIE)
+                {
+                    case "imp":
+                        $scope.importExport.title = "Import Countries & Provinces";
+                        $scope.importExport.dataPlaceHolder = "Please paste the data to be imported!";
+                        break;
+                    case "exp" :
+                        $scope.importExport.title = "Export Countries & Provinces";
+                        $scope.importExport.dataPlaceHolder = "click the Export button to start processing the data base for export";
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+        }
+
+        $scope.importExport.completeOperation = function(){
+            if( $scope.importExport.opIE == null)
+            {
+                return
+            }
+            $scope.importExport.canceled = false;
+            switch( $scope.importExport.opIE)
+            {
+                case "imp":
+                    $scope.importExport.cancelButtonTitle = "Cancel";
+                    $scope.importExport.dataPlaceHolder = "Please wait while your pasted data is being imported!";
+                    $scope.importExport.title = "Importing Countries & Provinces";
+
+                    $scope.importExport.operationBeingProcessed = true;
+
+                    var tempData = $scope.importExport.data;
+                    $scope.importExport.data = "";
+
+                    $timeout(function(){
+                        $scope.regionService.importCountries(tempData).then(
+                            function(successData){
+                                $scope.importExport.cancelOperation();
+                                tempData = "";
+                                tempData = null;
+                                $scope.importExport.$intervalCounter = 3;
+                                $scope.importExport.importTimeoutCancelToken = $interval(function() {
+
+                                    $scope.countries = null;
+                                    $scope.updateMap(null);
+
+                                    $scope.importExport.$intervalCounter -- ;
+
+                                    if($scope.importExport.$intervalCounter <= 0)
+                                    {
+                                        $timeout.cancel($scope.importExport.importTimeoutCancelToken);
+                                        $scope.importExport.importTimeoutCancelToken = null;
+                                    }
+                                }, 3, 3);
+                            },
+                            function(errMsg){
+                                tempData = "";
+                                tempData = null;
+                            }
+                        );
+                    }, 15);
+
+
+
+                    $scope.importExport.operationBeingProcessed = true;
+                    break;
+                case "exp":
+                    $scope.importExport.cancelButtonTitle = "Cancel";
+                    $scope.importExport.title = "Exporting Countries & Provinces";
+                    $scope.importExport.dataPlaceHolder = "Please wait while the database is being exported";
+
+                    $scope.importExport.operationBeingProcessed = true;
+
+                    $scope.regionService.exportCountries().then(
+                        function(successData){
+                            $scope.showPopWindow("Exported Data", JSON.stringify(successData));
+                            $scope.importExport.cancelOperation();
+                        },
+                        function(errMsg){}
+                    );
+
+                    $scope.importExport.operationBeingProcessed = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        $scope.importExport.onImportClicked = function(){
+            $scope.importExport.enableImportExport(false);
+
+            $scope.importExport.title = "Import Countries & Provinces";
+            $scope.importExport.buttonTitle = "Import";
+            $scope.importExport.dataPlaceHolder = "Please paste the data to be imported!";
+
+            $scope.importExport.opIE = "imp";
+        }
+
+        $scope.importExport.onExportClicked = function(){
+            $scope.importExport.enableImportExport(false);
+
+            $scope.importExport.title = "Export Countries & Provinces";
+            $scope.importExport.buttonTitle = "Export";
+            $scope.importExport.dataPlaceHolder = "click the Export button to start processing the data base for export";
+
+            $scope.importExport.opIE = "exp";
+        }
+
+        $scope.importExport.enableImportExport = function(enabledState){
+            $scope.importExport.importEnabled = enabledState; // true or false
+            $scope.importExport.exportEnabled = enabledState;
+        }
+
+    }]);
 
 appControllers.controller('infoController', ['$scope', '$routeParams', '$location', 'infomationService', function ($scope, $routeParams, $location, infomationService) {
      //debugger;

@@ -2,7 +2,7 @@
     <div class="row">
         <div class="col-xs-12 col-md-8 col-lg-12 maxWidthHeight" >map
 
-                <oz-d3-map get-map="getMap()" area-class="countriesClass" scale="1" get-auto-updater="addViewModel.getAutoUpdater()" ></oz-d3-map>
+                <oz-d3-map highlight-on-mouse-over="true" get-map="getMap()" area-class="countriesClass" scale="2" get-map-updater="getMapUpdate()" active-class=" activeCountry" ></oz-d3-map>
 
         </div>
         <div class="col-xs-12 col-md-4 col-lg-4 col-lg-pull-6 floatLeftonMaxWidth">
@@ -62,21 +62,17 @@
                 <div class="panel panel-default">
                     <div class="panel-body" >
                         <form role="form">
-                            <div class="form-group" style="overflow: scroll; max-height: 450px;">
-                                <!--  <label for="txtAreaImpExp">Geo data fragment</label>
+                            <div class="form-group" >
+                                <label for="txtAreaImpExp">Geo data fragment</label>
                                  <textarea rows="6" ng-model="importExport.data" class="form-control" id="txtAreaImpExp" placeholder="{{importExport.dataPlaceHolder}}"></textarea>
-                               <textarea rows="6" class="form-control" id="txtAreaImpExp2" placeholder="{{importExport.dataPlaceHolder}}">
-                                    {{importExport.dataTemp}}
-                                </textarea>-->
-                                {{importExport.data}}
                              </div>
                              <div class="form-group" >
                                  <div class=" col-xs-12">
-                                     <div class="alert alert-success " role="alert" ng-click="importExport.completeOperation()">
-                                         <a  class="alert-link col-md-offset-3">{{importExport.buttonTitle}}</a>
+                                     <div class="alert alert-success " role="alert" ng-click="importExport.completeOperation()" ng-class="{disabled: importExport.operationBeingProcessed == true}" >
+                                        <div class="btn-lg freeBtn"> <a  class="alert-link col-md-offset-3">{{importExport.buttonTitle}}</a> </div>
                                      </div>
                                      <div class="alert alert-danger "  role="alert" ng-click="importExport.cancelOperation()">
-                                         <a  class="alert-link col-md-offset-3">Cancel</a>
+                                         <div class="btn-lg freeBtn "> <a  class="alert-link col-md-offset-3" > {{importExport.cancelButtonTitle}}</a></div>
                                      </div>
                                  </div>
                              </div>

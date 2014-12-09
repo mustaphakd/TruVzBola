@@ -32,7 +32,7 @@
  */
 angular.module('oz.d3Map',[])
   .directive('ozD3Map', function ($timeout, D3ChartSizer) {
-    var xyz, g, projection, path, svg, width, height, objects, resizeBind, zoomBvr;
+    var xyz, g, projection, path, svg, width, height, objects, resizeBind, zoomBvr, hightlightOnMouseOver;
     var stack = [];
     var sizer = new D3ChartSizer();
 
@@ -52,6 +52,7 @@ angular.module('oz.d3Map',[])
       }
       attrs.textFontSize = attrs.textFontSize || '8px';
       attrs.textFont = attrs.textFont || 'sans-serif';
+      attrs.highlightOnMouseOver = attrs.highlightOnMouseOver || false;
     }
 
     return {
@@ -78,7 +79,8 @@ angular.module('oz.d3Map',[])
         textFontSize:   '@',
         textClass:      '@',
         textFont:       '@',
-        divClass:       '@'
+        divClass:       '@',
+        highlightOnMouseOver: '@'
       },
       compile:  function (el, attrs) {
         setDefaults(attrs);
@@ -89,7 +91,7 @@ angular.module('oz.d3Map',[])
               return false;
             }
 
-
+              hightlightOnMouseOver = attrs.highlightOnMouseOver;
                 svg = d3.select(angular.element($element)[0]).append('svg');
                 g = svg.append('g');
                 sizer.setSizes($scope, $element.parent());
@@ -112,9 +114,10 @@ angular.module('oz.d3Map',[])
               height = $scope.height;
               projection = d3.geo.mercator()
                 .scale($scope.scale)
-                .translate([width/$scope.widthScale, height/$scope.heightScale]);
+                ///.translate([width/$scope.widthScale, height/$scope.heightScale]);
+                .translate([width/2, height]);
 
-              svg.attr('preserveAspectRatio', 'xMidYMid')
+                svg.attr('preserveAspectRatio', 'xMidYMid')
                 .attr('viewBox', Math.round(($scope.leftOffset/100)*width) + ' ' + Math.round(($scope.topOffset/100)*height) + ' ' + Math.round(width*(1 - ($scope.rightOffset/100))) + ' ' + Math.round(height*(1 - ($scope.bottomOffset/100))))
                 .attr('width', width)
                 .attr('height', height);
@@ -260,11 +263,62 @@ angular.module('oz.d3Map',[])
                     /*.on("click", function (d) {
                       mapClicked(d, stack.length);
                     });*/
+
+                    if(hightlightOnMouseOver)
+                    {
+                        nodes.on("mouseover", function(d) {
+                            var parentNode = this.parentNode;
+                            parentNode.removeChild(this);
+                            parentNode.appendChild(this);
+                        });
+                    }
+
+                    $timeout(function(){
+                       // var area = g.node().getBBox();
+                       // var svgArea = svg.node().getBBox();
+
+                        //var calcY = svgArea.y;
+
+                     /*   if(calcY < 0)
+                        {
+                            calcY = ((calcY * 100) * (-1) ) / 100;
+                        }
+
+                        var tp = {
+                            g : area,
+                            svg: svgArea
+                        };
+                        console.log(tp); */
+                        //var crntY = d3.transform(g.attr("transform")).translate[1];
+
+                        //crntY + 150
+
+                        var svgClientRect = svg.node().getBoundingClientRect();
+
+                        //g.attr("transform", "translate(" + 0 + ", " + (calcY ) + ")");
+
+                        //area = g.node().getBBox();
+                        //svgArea = svg.node().getBBox();
+                        svgClientRect = svg.node().getBoundingClientRect();
+                        var gClientRect = g.node().getBoundingClientRect();
+
+                        var btmDiff =    svgClientRect.bottom - gClientRect.bottom;
+
+                        g.attr("transform", "translate(" + 0 + ", " + (btmDiff ) + ")");
+
+                       var tp = {
+                            svgEct: svgClientRect,
+                            gEct: gClientRect
+                        };
+
+                        console.log(tp);
+                    },5);
+
+
               }
               if (angular.isFunction(nodeHandler)) {
                 nodeHandler(nodes, nodesParent, projection);
               }
-
 
             }
 
