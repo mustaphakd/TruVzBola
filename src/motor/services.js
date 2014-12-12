@@ -229,6 +229,23 @@ appservices.factory('regionService', [  "$location", "$q" , "repositoryService",
         return newDeferredCountry.promise;
     }
 
+    service.getCountry = function(countryId){
+        var promess = $q.defer();
+
+        var repos = repositoryService.Db;
+
+        repos.onReady(function(){
+
+            repos.Countries.first(function(cntry){
+                return cntry.id == this.id;
+            }, {id : countryId}, function(country){
+                promess.resolve(country);
+            });
+        });
+
+        return promess.promise;
+    }
+
     service.exportCountries = function(){
         var exportCountryDeffered = $q.defer();
 
@@ -284,24 +301,31 @@ appservices.factory('regionService', [  "$location", "$q" , "repositoryService",
             //format data
             var jData = [];
 
-           repos.Provinces.forEach(function(province){
+            service.getCountry(countryIdVal).then(function(parentCountry){
 
-               if(province.countryId == countryIdVal)
-               {
-                   var temp = JSON.parse(province.geometry);
-                   var obj = { "type": "Feature", "properties": { }, "geometry": temp};
-                   obj.properties.label = province.name;
-                   obj.properties.id = province.id;
-                   obj.properties.mapLevel = "province";
 
-                   jData.push(obj);
-               }
-           }).then(function(){
-               newDeferredCountry.resolve([{
-                   type:        'path',
-                   objects:     jData
-               }]);
-           });
+
+               repos.Provinces.forEach(function(province){
+
+                   if(province.countryId == countryIdVal)
+                   {
+                       var temp = JSON.parse(province.geometry);
+                       var obj = { "type": "Feature", "properties": { }, "geometry": temp};
+                       obj.properties.label = province.name;
+                       obj.properties.id = province.id;
+                       obj.properties.country = parentCountry.name;
+                       obj.properties.mapLevel = "province";
+
+                       jData.push(obj);
+                   }
+               }).then(function(){
+                   newDeferredCountry.resolve([{
+                       type:        'path',
+                       objects:     jData
+                   }]);
+               });
+            });
+
         });
 
         return newDeferredCountry.promise;

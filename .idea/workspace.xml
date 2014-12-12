@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="742aae90-5eb7-48aa-9ec3-31e986c742d4" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/motor/app.css" afterPath="$PROJECT_DIR$/src/motor/app.css" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/motor/controllers.js" afterPath="$PROJECT_DIR$/src/motor/controllers.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/libs/d3map.js" afterPath="$PROJECT_DIR$/src/libs/d3map.js" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/views/region/list.html" afterPath="$PROJECT_DIR$/src/views/region/list.html" />
@@ -63,8 +62,8 @@
       <file leaf-file-name="controllers.js" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/motor/controllers.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="4981" max-vertical-offset="9724">
-              <caret line="505" column="50" selection-start-line="505" selection-start-column="50" selection-end-line="505" selection-end-column="50" />
+            <state vertical-scroll-proportion="-11.642858" vertical-offset="3856" max-vertical-offset="7905">
+              <caret line="549" column="20" selection-start-line="549" selection-start-column="20" selection-end-line="549" selection-end-column="20" />
               <folding>
                 <element signature="e#220#553#0" expanded="false" />
                 <element signature="e#1146#1210#0" expanded="false" />
@@ -91,12 +90,16 @@
                 <element signature="e#10321#10658#0" expanded="false" />
                 <element signature="e#13287#13716#0" expanded="false" />
                 <element signature="e#13773#13908#0" expanded="false" />
-                <element signature="e#19018#19168#0" expanded="false" />
-                <element signature="e#20543#21846#0" expanded="false" />
-                <element signature="e#21906#25354#0" expanded="false" />
-                <element signature="e#25412#25749#0" expanded="false" />
-                <element signature="e#25807#26175#0" expanded="false" />
-                <element signature="e#26248#26400#0" expanded="false" />
+                <element signature="e#15312#18937#0" expanded="false" />
+                <element signature="e#16604#18890#0" expanded="false" />
+                <element signature="e#19021#19171#0" expanded="false" />
+                <element signature="e#19214#19502#0" expanded="false" />
+                <element signature="e#19540#19811#0" expanded="false" />
+                <element signature="e#20722#22025#0" expanded="false" />
+                <element signature="e#22085#25533#0" expanded="false" />
+                <element signature="e#25591#25928#0" expanded="false" />
+                <element signature="e#25986#26354#0" expanded="false" />
+                <element signature="e#26427#26579#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -105,22 +108,22 @@
       <file leaf-file-name="d3map.js" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/libs/d3map.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.6050296" vertical-offset="8584" max-vertical-offset="9503">
-              <caret line="608" column="0" selection-start-line="608" selection-start-column="0" selection-end-line="608" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.40783745" vertical-offset="4309" max-vertical-offset="9350">
+              <caret line="392" column="65" selection-start-line="392" selection-start-column="65" selection-end-line="392" selection-end-column="65" />
               <folding>
-                <element signature="e#11918#11998#0" expanded="false" />
-                <element signature="e#12145#12347#0" expanded="false" />
-                <element signature="e#12703#13061#0" expanded="false" />
-                <element signature="e#15470#16084#0" expanded="false" />
-                <element signature="e#16143#16335#0" expanded="false" />
-                <element signature="e#21545#21933#0" expanded="false" />
-                <element signature="e#22062#22214#0" expanded="false" />
-                <element signature="e#22319#23879#0" expanded="false" />
-                <element signature="e#26115#26541#0" expanded="false" />
-                <element signature="e#26572#27140#0" expanded="false" />
-                <marker date="1418338455780" expanded="true" signature="2058:2728" placeholder="{...}" />
-                <marker date="1418338455780" expanded="true" signature="9624:9633" placeholder="..." />
-                <marker date="1418338455780" expanded="true" signature="9749:9762" placeholder="..." />
+                <element signature="e#3848#5068#0" expanded="false" />
+                <element signature="e#7616#10423#0" expanded="false" />
+                <element signature="e#12108#12188#0" expanded="false" />
+                <element signature="e#12335#12537#0" expanded="false" />
+                <element signature="e#12893#13251#0" expanded="false" />
+                <element signature="e#17150#17342#0" expanded="false" />
+                <element signature="e#23388#23776#0" expanded="false" />
+                <element signature="e#23905#24057#0" expanded="false" />
+                <element signature="e#28200#28626#0" expanded="false" />
+                <element signature="e#28657#29225#0" expanded="false" />
+                <marker date="1418377396035" expanded="true" signature="2219:2889" placeholder="{...}" />
+                <marker date="1418377396035" expanded="true" signature="9814:9823" placeholder="..." />
+                <marker date="1418377396035" expanded="true" signature="9939:9952" placeholder="..." />
               </folding>
             </state>
           </provider>
@@ -130,7 +133,7 @@
         <entry file="file://$PROJECT_DIR$/src/views/region/list.html">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="-1.2592592" vertical-offset="0" max-vertical-offset="1683">
-              <caret line="4" column="125" selection-start-line="4" selection-start-column="125" selection-end-line="4" selection-end-column="125" />
+              <caret line="4" column="56" selection-start-line="4" selection-start-column="42" selection-end-line="4" selection-end-column="56" />
               <folding />
             </state>
           </provider>
@@ -139,12 +142,16 @@
       <file leaf-file-name="services.js" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/motor/services.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="2883" max-vertical-offset="5219">
-              <caret line="299" column="43" selection-start-line="299" selection-start-column="43" selection-end-line="299" selection-end-column="43" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="3524" max-vertical-offset="4471">
+              <caret line="315" column="66" selection-start-line="315" selection-start-column="66" selection-end-line="315" selection-end-column="66" />
               <folding>
+                <element signature="e#6062#6641#0" expanded="false" />
                 <element signature="e#7304#7380#0" expanded="false" />
-                <element signature="e#7968#8513#0" expanded="false" />
-                <element signature="e#8570#9201#0" expanded="false" />
+                <element signature="e#7972#8342#0" expanded="false" />
+                <element signature="e#8384#8929#0" expanded="false" />
+                <element signature="e#8986#9617#0" expanded="false" />
+                <element signature="e#10613#10721#0" expanded="false" />
+                <element signature="e#10884#12002#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -210,10 +217,10 @@
         <option value="$PROJECT_DIR$/src/GruntFile.js" />
         <option value="$PROJECT_DIR$/src/motor/include.js" />
         <option value="$PROJECT_DIR$/src/motor/app.css" />
-        <option value="$PROJECT_DIR$/src/views/region/list.html" />
-        <option value="$PROJECT_DIR$/src/libs/d3map.js" />
         <option value="$PROJECT_DIR$/src/motor/services.js" />
+        <option value="$PROJECT_DIR$/src/views/region/list.html" />
         <option value="$PROJECT_DIR$/src/motor/controllers.js" />
+        <option value="$PROJECT_DIR$/src/libs/d3map.js" />
       </list>
     </option>
   </component>
@@ -946,30 +953,34 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/views/region/list.html">
+    <entry file="file://$PROJECT_DIR$/src/motor/services.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-1.2592592" vertical-offset="0" max-vertical-offset="1683">
-          <caret line="4" column="125" selection-start-line="4" selection-start-column="125" selection-end-line="4" selection-end-column="125" />
-          <folding />
+        <state vertical-scroll-proportion="0.0" vertical-offset="3524" max-vertical-offset="4471">
+          <caret line="315" column="66" selection-start-line="315" selection-start-column="66" selection-end-line="315" selection-end-column="66" />
+          <folding>
+            <element signature="e#6062#6641#0" expanded="false" />
+            <element signature="e#7304#7380#0" expanded="false" />
+            <element signature="e#7972#8342#0" expanded="false" />
+            <element signature="e#8384#8929#0" expanded="false" />
+            <element signature="e#8986#9617#0" expanded="false" />
+            <element signature="e#10613#10721#0" expanded="false" />
+            <element signature="e#10884#12002#0" expanded="false" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/motor/services.js">
+    <entry file="file://$PROJECT_DIR$/src/views/region/list.html">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="2883" max-vertical-offset="5219">
-          <caret line="299" column="43" selection-start-line="299" selection-start-column="43" selection-end-line="299" selection-end-column="43" />
-          <folding>
-            <element signature="e#7304#7380#0" expanded="false" />
-            <element signature="e#7968#8513#0" expanded="false" />
-            <element signature="e#8570#9201#0" expanded="false" />
-          </folding>
+        <state vertical-scroll-proportion="-1.2592592" vertical-offset="0" max-vertical-offset="1683">
+          <caret line="4" column="56" selection-start-line="4" selection-start-column="42" selection-end-line="4" selection-end-column="56" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/motor/controllers.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="4981" max-vertical-offset="9724">
-          <caret line="505" column="50" selection-start-line="505" selection-start-column="50" selection-end-line="505" selection-end-column="50" />
+        <state vertical-scroll-proportion="-11.642858" vertical-offset="3856" max-vertical-offset="7905">
+          <caret line="549" column="20" selection-start-line="549" selection-start-column="20" selection-end-line="549" selection-end-column="20" />
           <folding>
             <element signature="e#220#553#0" expanded="false" />
             <element signature="e#1146#1210#0" expanded="false" />
@@ -996,34 +1007,38 @@
             <element signature="e#10321#10658#0" expanded="false" />
             <element signature="e#13287#13716#0" expanded="false" />
             <element signature="e#13773#13908#0" expanded="false" />
-            <element signature="e#19018#19168#0" expanded="false" />
-            <element signature="e#20543#21846#0" expanded="false" />
-            <element signature="e#21906#25354#0" expanded="false" />
-            <element signature="e#25412#25749#0" expanded="false" />
-            <element signature="e#25807#26175#0" expanded="false" />
-            <element signature="e#26248#26400#0" expanded="false" />
+            <element signature="e#15312#18937#0" expanded="false" />
+            <element signature="e#16604#18890#0" expanded="false" />
+            <element signature="e#19021#19171#0" expanded="false" />
+            <element signature="e#19214#19502#0" expanded="false" />
+            <element signature="e#19540#19811#0" expanded="false" />
+            <element signature="e#20722#22025#0" expanded="false" />
+            <element signature="e#22085#25533#0" expanded="false" />
+            <element signature="e#25591#25928#0" expanded="false" />
+            <element signature="e#25986#26354#0" expanded="false" />
+            <element signature="e#26427#26579#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/libs/d3map.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.6050296" vertical-offset="8584" max-vertical-offset="9503">
-          <caret line="608" column="0" selection-start-line="608" selection-start-column="0" selection-end-line="608" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.40783745" vertical-offset="4309" max-vertical-offset="9350">
+          <caret line="392" column="65" selection-start-line="392" selection-start-column="65" selection-end-line="392" selection-end-column="65" />
           <folding>
-            <element signature="e#11918#11998#0" expanded="false" />
-            <element signature="e#12145#12347#0" expanded="false" />
-            <element signature="e#12703#13061#0" expanded="false" />
-            <element signature="e#15470#16084#0" expanded="false" />
-            <element signature="e#16143#16335#0" expanded="false" />
-            <element signature="e#21545#21933#0" expanded="false" />
-            <element signature="e#22062#22214#0" expanded="false" />
-            <element signature="e#22319#23879#0" expanded="false" />
-            <element signature="e#26115#26541#0" expanded="false" />
-            <element signature="e#26572#27140#0" expanded="false" />
-            <marker date="1418338455780" expanded="true" signature="2058:2728" placeholder="{...}" />
-            <marker date="1418338455780" expanded="true" signature="9624:9633" placeholder="..." />
-            <marker date="1418338455780" expanded="true" signature="9749:9762" placeholder="..." />
+            <element signature="e#3848#5068#0" expanded="false" />
+            <element signature="e#7616#10423#0" expanded="false" />
+            <element signature="e#12108#12188#0" expanded="false" />
+            <element signature="e#12335#12537#0" expanded="false" />
+            <element signature="e#12893#13251#0" expanded="false" />
+            <element signature="e#17150#17342#0" expanded="false" />
+            <element signature="e#23388#23776#0" expanded="false" />
+            <element signature="e#23905#24057#0" expanded="false" />
+            <element signature="e#28200#28626#0" expanded="false" />
+            <element signature="e#28657#29225#0" expanded="false" />
+            <marker date="1418377396035" expanded="true" signature="2219:2889" placeholder="{...}" />
+            <marker date="1418377396035" expanded="true" signature="9814:9823" placeholder="..." />
+            <marker date="1418377396035" expanded="true" signature="9939:9952" placeholder="..." />
           </folding>
         </state>
       </provider>

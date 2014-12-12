@@ -29,6 +29,10 @@
  *      will be called after all objects added, with arguments nodeHandler(nodes, nodesParent, projection).
  * Supported object types are 'path' (default), 'circle', 'div' and 'text'.
  * In nodeHandler() you can declare any attributes and event-handlers for objects.
+ *
+ *
+ * add getMapUpdater:     enables auto map update when new nodes are added
+ processCoord:   all user to process lat and long prior to handling click event
  */
 angular.module('oz.d3Map',[])
   .directive('ozD3Map', function ($timeout, D3ChartSizer) {
@@ -82,7 +86,8 @@ angular.module('oz.d3Map',[])
         textFont:       '@',
         divClass:       '@',
         highlightOnMouseOver: '@',
-        getMapUpdater:     '&'
+        getMapUpdater:     '&',
+        processCoord:   '&'
       },
         controller: function($scope){
             var hydratedScale = 0;
@@ -369,15 +374,32 @@ angular.module('oz.d3Map',[])
                     .enter()
                     .append("path")
                     .attr("id", getID)
+                      .attr("data_level", parseInt(stack.length + 1) )
                     .attr("class", areaClass)
                       .attr("d", path)
                     .on("click", function (d) {
                           tip.hide(d);
-                          //d3.event.preventDefault();
-                          //d3.event.translate[0] = 0;
-                          //d3.event.translate[1] = 0;
-                          d.thisRef = this;
-                      mapClicked(d, stack.length);
+
+                          if(!$scope.processCoord || !angular.isFunction($scope.processCoord))
+                          {
+                              d.thisRef = this;
+                              var nodeLevel = parseInt(this.attributes["data_level"].value);
+                              //mapClicked(d, stack.length);
+                              mapClicked(d, nodeLevel);
+                          }
+                          else
+                          {
+                              var longLat = projection.invert(d3.mouse(this));
+                              var proceed = $scope.processCoord()(longLat, d);
+
+                              if(proceed == false)
+                                return;
+
+                              d.thisRef = this;
+                              var nodeLevel = parseInt(this.attributes["data_level"].value);
+                              //mapClicked(d, stack.length);
+                              mapClicked(d, nodeLevel);
+                          }
                     });
 
                     if(hightlightOnMouseOver)
@@ -485,10 +507,20 @@ angular.module('oz.d3Map',[])
 
             function mapClicked(area, fromLevel) {
               if (stack.length > 0) {
-                var toRemove = g.selectAll('#level' + parseInt(stack.length + 1));
-                if (toRemove) {
-                  toRemove.remove();
-                }
+                //var toRemove = g.selectAll('#level' + parseInt(stack.length + 1));
+
+                  for(var i = parseInt(fromLevel) ; i <=stack.length; i++)
+                  {
+                      var toRemove = g.selectAll('#level' + (i + 1));
+                      if (toRemove) {
+                          toRemove.remove();
+                      }
+                  }
+                  while(stack.length > fromLevel)
+                  {
+                      stack.shift();
+                  }
+                  //stack.length = fromLevel;
               }
               //if (stack[0]) {
               //  g.selectAll('#' + stack[0].id).style('display', null);
@@ -525,11 +557,23 @@ angular.module('oz.d3Map',[])
                 if ($scope.activeClass) {
                   g.selectAll('.' + $scope.activeClass).classed($scope.activeClass, false);
                 }
-                  $scope.getMap();
+                  if (fromLevel > 1) {
+                      //var toRemove = g.selectAll('#level' + parseInt(stack.length + 1));
+                      var toRemove = g.selectAll('#level' + parseInt(fromLevel));
+                      if (toRemove) {
+                          toRemove.remove();
+                      }
+                      zoomed(stack[0], false)
+                  }
+                  else
+                  {
+                      adjustTranslation(true);
+                  }
+                  //$scope.getMap();
 
                       //zoom(xyz);
                   //zoomed(area)
-                  adjustTranslation(true);
+
               }
                 $scope.preserveAspectRatio(d3.transform(g.attr("transform")).translate, d3.transform(g.attr("transform")).scale);
             }
@@ -551,7 +595,9 @@ angular.module('oz.d3Map',[])
                   //$scope.prevCoordTrans(d3.transform(g.attr("transform")).translate);
                   $scope.multiplierEffect = 1;
               }
-              function zoomed(d) {
+              function zoomed(d, bHydrateTranslation) {
+
+                  var hydrateTranslation = bHydrateTranslation == undefined ?  true : bHydrateTranslation;
 
                   if(d == undefined || d == null)
                   {
@@ -581,6 +627,7 @@ angular.module('oz.d3Map',[])
                       }
                       else
                       {
+                          $scope.conserveScale(d3.event.scale);
                           g.style("stroke-width", 1.5 / d3.event.scale + "px");
                           g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
                       }
@@ -603,8 +650,10 @@ angular.module('oz.d3Map',[])
                       localEleHeightScale /= 100;
                       var localEleScale = Math.min(localEleWidthScale, localEleHeightScale);
 
-                      var prevCoods = d3.transform(g.attr("transform")).translate
-                      $scope.hydrateTranslation(stack.length, d3.transform(g.attr("transform")).translate);
+                      var prevCoods = d3.transform(g.attr("transform")).translate;
+
+                      if(hydrateTranslation)
+                        $scope.hydrateTranslation(stack.length, d3.transform(g.attr("transform")).translate);
                       g.attr("transform", "translate(" + (  prevCoods[0]) + ", " + ( prevCoods[1] ) + ")scale(" + localEleScale + ")");
 
                       svgClientRect = svg.node().getBoundingClientRect();

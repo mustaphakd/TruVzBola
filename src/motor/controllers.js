@@ -377,6 +377,7 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
 
 /************ province logic*************************************************************/
     $scope.addViewModel.selectedCountryId = null;
+
     $scope.addViewModel.prevSelectedCountryId = null;
 
     $scope.addViewModel.saveProvince = function(provinceData)
@@ -501,7 +502,7 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
                         objects: [],
                         getID: $scope.mapGetID};
 
-                    model.objects.push(parentEntity.area)
+                    //model.objects.push(parentEntity.area)
 
                     countriesPromese.resolve(model);
                     $timeout.cancel($scope.countriesTimeoutCancelToken);
@@ -534,11 +535,19 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
     }
 
     $scope.mapGetID = function(node){
-        if((node != null && node != undefined) && (node.properties != undefined) && (node.properties.id != undefined))
+        if((node != null && node != undefined) && (node.properties != undefined)
+            && (node.properties.id != undefined) && (node.properties.mapLevel != undefined))
         {
             node.id = node.properties.id;
-            return node.properties.id;
+            return node.id;
         }
+    }
+
+    $scope.processLatLong = function(coord, node){
+        var test = coord;
+        var test2 = node;
+
+        return true;
     }
 
 
