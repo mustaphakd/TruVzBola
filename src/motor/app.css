@@ -179,15 +179,22 @@
         /*pointer-events:none;*/
 
     }
+    svg{
+        cursor: -webkit-grab;
+    }
+    svg:active{
+        cursor: move;
+    }
     .countriesClass{
         stroke: black;
         stroke-width: .02em;
         fill: orange;
         fill-opacity: .7;
+        cursor: pointer;
     }
     .countriesClass:hover{
-        stroke: white;
-        stroke-width: .2em;
+        stroke: #e7ebdc;
+        stroke-width: .09em;
         fill: orange;
         fill-opacity: 1;
     }
@@ -196,13 +203,13 @@
         stroke: #ffa018;
         stroke-width: .01em;
         fill: #fffe86;
-        fill-opacity: .7;
+        fill-opacity: .4;
     }
     .countriesClass.activeCountry:hover{
         stroke: #ffa605;
-        stroke-width: .2em;
+        stroke-width: .1em;
         fill: #fffb1b;
-        fill-opacity: 1;
+        fill-opacity: .8;
     }
     .maxWidthHeight{
         border-color: #66afe9;

@@ -87,6 +87,9 @@ angular.module('oz.d3Map',[])
         controller: function($scope){
             var hydratedScale = 0;
             var hydratedTranslationCoord = [];
+            var prevCoordTrans = [];
+
+            var aspectRatio = {};
 
             $scope.conserveScale = function(intVal){ hydratedScale = intVal   };
 
@@ -99,6 +102,27 @@ angular.module('oz.d3Map',[])
             $scope.getHydrateTranslation = function(idx){
                 return hydratedTranslationCoord[idx + 1] ;
             };
+
+            $scope.prevCoordTrans = function( transCoord){
+                prevCoordTrans = transCoord;
+            };
+
+            $scope.getprevCoordTrans = function(idx){
+                return prevCoordTrans ;
+            };
+
+            $scope.preserveAspectRatio = function(translation, scale)
+            {
+                aspectRatio.translation = translation;
+                aspectRatio.scale = scale;
+            };
+
+            $scope.retrieveAspectRatio = function(){
+              return aspectRatio;
+            };
+
+            $scope.usePreservedAspectRatio = false;
+            $scope.stackLevel = 0;
 
 
         },
@@ -132,15 +156,6 @@ angular.module('oz.d3Map',[])
                               $scope.width = false;
                               sizer.setSizes($scope, $element.parent());
                               var originalScale = $scope.scale;
-
-                              /*
-                              * var toRemove = g.selectAll('#level' + parseInt(stack.length + 1));
-                               if (toRemove) {
-                               toRemove.remove();
-                               }
-                              * */
-
-
                               if(newData == null)
                               {
                                   objects = null;
@@ -148,9 +163,22 @@ angular.module('oz.d3Map',[])
                               }
                               else
                               {
-                                  objects[0].objects.push(newData);
+                                  if(angular.isArray(newData))
+                                  {
+                                      objects[0].objects = newData;
+                                      addObjects(objects);
+                                  }
+                                  else if(newData.requiredAction != undefined && newData.requiredAction != null)
+                                  {
+                                      if(newData.requiredAction == "viualAppend")
+                                        addObjects(newData.actualData)
+                                  }
+                                  else {
+                                      objects[0].objects.push(newData);
+                                      drawMap();
+                                  }
 
-                                  drawMap();
+
                               }
 
                           });
@@ -188,14 +216,15 @@ angular.module('oz.d3Map',[])
               path = d3.geo.path().projection(projection);
 
                 /*************************************************/
-                zoomBvr = d3.behavior.zoom()
+                zoomBvr = d3.behavior.zoom(g)
                     //.translate([0, 0])
                     //.scale(1)
                     .scaleExtent([.2, 25])
-                    .on("zoom", zoomed);
+                    .on("zoom", zoomed)
+                    .on("zoomstart", zoomStarted);
 
               if (!objects) {
-                $scope.getMap().then(function (newObjects) {
+                $scope.getMap(null).then(function (newObjects) {
                   if (!newObjects) {
                     console.error('map objects empty');
                     return false;
@@ -206,6 +235,20 @@ angular.module('oz.d3Map',[])
 
                     svg.call(zoomBvr) // delete this line to disable free zooming
                         .call(zoomBvr.event);
+
+                    tip = null;
+
+                    tip = d3.tip()
+                        .attr('class', 'd3-tip')
+                        .offset([-1, 0])
+                        .html(function(d) {
+                            return "<strong>Country:</strong> <span style='color:red'>" + d.properties.label + "</span>" +
+                            "<br /><strong>Population:</strong> <span style='color:#ffc33b'> 2 mill :) </span>" ;
+                        })
+
+
+                    //maybe based on length. 0 = country, 1 = provinces ....
+                    svg.call(tip);
                 });
               }
               else {
@@ -219,6 +262,10 @@ angular.module('oz.d3Map',[])
             }
 
             function addObjects(objects) {
+
+              if(objects == undefined || objects == null)
+                    return;
+
               if (angular.isArray(objects)) {
                 angular.forEach(objects, function (subObjects) {
                   if (subObjects.objects) {
@@ -313,21 +360,7 @@ angular.module('oz.d3Map',[])
                   if (stack.length > 0) {
                     areaClass = areaClass + " "+ $scope.activeClass;
                   }
-                      tip = null;
 
-                      tip = d3.tip()
-                          .attr('class', 'd3-tip')
-                          .offset([-1, 0])
-                          .html(function(d) {
-                              //console.log(d);
-                              //console.log(this.html());
-                              return "<strong>Country:</strong> <span style='color:red'>" + d.properties.country + "</span>" +
-                                    "<br /><strong>Population:</strong> <span style='color:#ffc33b'> 2 mill :) </span>" ;
-                          })
-
-
-                    //maybe based on length. 0 = country, 1 = provinces ....
-                    svg.call(tip);
                     //objects = objects.objects;
                   nodes = nodesParent
                     .attr('id', 'level' + parseInt(stack.length + 1))
@@ -340,7 +373,9 @@ angular.module('oz.d3Map',[])
                       .attr("d", path)
                     .on("click", function (d) {
                           tip.hide(d);
-                          d3.event.preventDefault();
+                          //d3.event.preventDefault();
+                          //d3.event.translate[0] = 0;
+                          //d3.event.translate[1] = 0;
                           d.thisRef = this;
                       mapClicked(d, stack.length);
                     });
@@ -403,6 +438,13 @@ angular.module('oz.d3Map',[])
 
                       var localScale = Math.min(wScale, hScale);
 
+                      //var doZoom = false;
+
+                      if(localScale == Infinity || localScale == undefined || localScale == 0)
+                      {localScale = $scope.scale ;
+                       // doZoom = true;
+                      }
+
                       if(localforced == false)
                       {
                           $scope.conserveScale(localScale);
@@ -424,6 +466,9 @@ angular.module('oz.d3Map',[])
                           coord = null;
                       }
                       g.attr("transform", "translate(" + (  leftDiff) + ", " + ( btmDiff ) + ")scale(" + localScale + ")");
+
+                      /*if(doZoom)
+                      zoomed(svg);*/
                   }
                  /* else
                   {
@@ -457,17 +502,21 @@ angular.module('oz.d3Map',[])
                   stack.unshift(area);
                 }
                 g.selectAll('.' + $scope.activeClass).classed($scope.activeClass, false);
-                $scope.getMap({area: area, stack: stack}).then(function (mapObjects) {
+                  var parentEntity = {area: area, stack: stack};
+                $scope.getMap( {parentEntity: {area: area, stack: stack}}).then(function (mapObjects) {
                   addObjects(mapObjects);
                   //zoom(xyz);
                     zoomed(area);
                   //g.selectAll('#' + area.id).style('display', 'none');
+                    parentEntity = null;
                 }, function () {
                   if ($scope.activeClass) {
                     g.selectAll('#' + area.id).classed($scope.activeClass, true);
+                      parentEntity = null;
                   }
                   if ($scope.zoomEmptyAreas && $scope.zoomEmptyAreas !== 'false') {
                     //zoom(xyz);
+                      parentEntity = null;
                   }
                 });
               } else {
@@ -476,11 +525,13 @@ angular.module('oz.d3Map',[])
                 if ($scope.activeClass) {
                   g.selectAll('.' + $scope.activeClass).classed($scope.activeClass, false);
                 }
+                  $scope.getMap();
 
-                //zoom(xyz);
+                      //zoom(xyz);
                   //zoomed(area)
                   adjustTranslation(true);
               }
+                $scope.preserveAspectRatio(d3.transform(g.attr("transform")).translate, d3.transform(g.attr("transform")).scale);
             }
 
             function zoom(xyz) {
@@ -494,20 +545,39 @@ angular.module('oz.d3Map',[])
             }
 
               /*********************************************/
+
+              function zoomStarted(d, arg1, arg2)
+              {
+                  //$scope.prevCoordTrans(d3.transform(g.attr("transform")).translate);
+                  $scope.multiplierEffect = 1;
+              }
               function zoomed(d) {
 
                   if(d == undefined || d == null)
                   {
-                      if(d3.event.sourceEvent == null)
-                        return;
-                      if(d3.event.sourceEvent.wheelDelta == undefined)
-                      {
-                          if(d3.event.translate[0] == 0 && d3.event.translate[1] == 0)
-                            return;
+                      if(d3.event.sourceEvent == null) {
+                        //console.log("d3.event.sourceEvent is null. exiting function zoomed(d)");
+                          return;
+                      }
+                      if(d3.event.sourceEvent.wheelDelta == undefined) {
 
-                          var localScale =  d3.transform(g.attr("transform")).scale;
-                          g.attr("transform", "translate(" + d3.event.translate + ")scale(" + localScale +  ")");
+                          var localScale = d3.transform(g.attr("transform")).scale;
+
+                          var prevTransCoord = d3.transform(g.attr("transform")).translate;
+                          var eventTransCoord = d3.event.translate;
+
+                          var xy = [];
+                           xy[0] =  prevTransCoord[0]* $scope.multiplierEffect + (eventTransCoord[0]) * (1.1 - $scope.multiplierEffect) ;// * xDir);
+                           xy[1] = prevTransCoord[1] * $scope.multiplierEffect   + (eventTransCoord[1]) * (1.1 - $scope.multiplierEffect)  ;// * yDir);
+
+                          if($scope.multiplierEffect > .3)
+                            $scope.multiplierEffect -= .005;
+
+                          g.attr("transform", "translate(" + xy + ")scale(" + localScale +  ")");
+
+                          $scope.prevCoordTrans(xy);
                           localScale = null;
+                          prevTransCoord = null;
                       }
                       else
                       {

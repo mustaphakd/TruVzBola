@@ -184,6 +184,13 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
     $scope.addViewModel.titlePlacement = "left";
     $scope.addViewModel.buttonsDivClass = "divBtn";
 
+
+
+    $scope.addViewModel.mapLevel = "country"; // can be country, province, department or city
+    $scope.addViewModel.panelTitle = "New Country";
+    $scope.addViewModel.placeholder = "Enter Country Name";
+    $scope.addViewModel.popoverString ='Add new country';
+
     /************************New Coontry********/
     $scope.addViewModel.newModel = {
         coordinates: "",
@@ -231,6 +238,24 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
 
     $scope.addViewModel.hideAddNewContry = function(){
             $scope.addViewModel.addTitle = " ";
+    }
+
+    $scope.addViewModel.updateFormControls = function(){
+
+        switch($scope.addViewModel.mapLevel)
+        {
+            case 'province':
+                $scope.addViewModel.panelTitle = "New Province";
+                $scope.addViewModel.placeholder = "Enter Province Name";
+                $scope.addViewModel.popoverString ='Add new province';
+                break;
+
+            default :
+                $scope.addViewModel.panelTitle = "New Country";
+                $scope.addViewModel.placeholder = "Enter Country Name";
+                $scope.addViewModel.popoverString ='Add new country';
+                break;
+        }
     }
 
     /*///////////////////////////////////////////***********************************/
@@ -282,38 +307,50 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
                 coordinates = JSON.stringify(parsed);
 
             }
-            $scope.regionService.addNewCountry({name: $scope.addViewModel.newModel.name, coord: coordinates || ""}).then(
-                function(succeed){
 
-                    $scope.addViewModel.setProcessing(false);
-                    $scope.addViewModel.collapseAddNewCountry();
-
-                    if( $scope.countries != null) {
-                        //debugger;
-                        var obj = succeed;
-                        $scope.countries[0].objects.push(obj);
-
-                        $scope.addViewModel.newCountryTempArr = [];
-                        $scope.addViewModel.newCountryTempArr.push(obj);
-
-                        //var cntryType = { type: "path", objects : $scope.addViewModel.newCountryTempArr};
-
-                        $scope.updateMap(obj);
-                        obj = null;
-                    }
-                    else
+            switch($scope.addViewModel.mapLevel)
+            {
+                case 'province':
+                    if($scope.addViewModel.selectedCountryId != null)
                     {
-                        $scope.updateMap(null);
+                        $scope.addViewModel.saveProvince({name: $scope.addViewModel.newModel.name, coord: coordinates || ""});
                     }
+                break;
 
-                },
-                function(failMsg){
-                    $scope.addViewModel.setProcessing(false);
-                    $scope.addViewModel.collapseAddNewCountry();
-                }
-            );
-            //to be deleted
-            //$scope.addViewModel.collapseAddNewCountry();
+                default :
+                    $scope.regionService.addNewCountry({name: $scope.addViewModel.newModel.name, coord: coordinates || ""}).then(
+                        function(succeed){
+
+                            $scope.addViewModel.setProcessing(false);
+                            $scope.addViewModel.collapseAddNewCountry();
+
+                            if( $scope.countries != null) {
+                                //debugger;
+                                var obj = succeed;
+                                $scope.countries[0].objects.push(obj);
+
+                                $scope.addViewModel.newCountryTempArr = [];
+                                $scope.addViewModel.newCountryTempArr.push(obj);
+
+                                //var cntryType = { type: "path", objects : $scope.addViewModel.newCountryTempArr};
+
+                                $scope.updateMap(obj);
+                                obj = null;
+                            }
+                            else
+                            {
+                                $scope.updateMap(null);
+                            }
+
+                        },
+                        function(failMsg){
+                            $scope.addViewModel.setProcessing(false);
+                            $scope.addViewModel.collapseAddNewCountry();
+                        }
+                    );
+                break;
+            }
+
         }
     }
 
@@ -337,38 +374,141 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
         $scope.addViewModel.newModel.isValid = false;
         $scope.validation.countryName = {errorClass:"", showError:false};
     }
+
+/************ province logic*************************************************************/
+    $scope.addViewModel.selectedCountryId = null;
+    $scope.addViewModel.prevSelectedCountryId = null;
+
+    $scope.addViewModel.saveProvince = function(provinceData)
+    {
+        $scope.regionService.addNewProvince($scope.addViewModel.selectedCountryId, provinceData).then(
+            function(succeed){
+
+                $scope.addViewModel.setProcessing(false);
+                $scope.addViewModel.collapseAddNewCountry();
+
+                    var model = {
+                        requiredAction :"viualAppend",
+                        actualData: {
+                            type:        'path',
+                            objects:     []
+                        }
+                    };
+                model.actualData.objects.push(succeed);
+
+
+                    $scope.updateMap(model);
+
+
+            },
+            function(failMsg){
+                $scope.addViewModel.setProcessing(false);
+                $scope.addViewModel.collapseAddNewCountry();
+            }
+        );
+    }
 /*********************Map logic************************************************************************/
     $scope.countries = null;
     $scope.countriesTimeoutCancelToken = null;
     $scope.countriesUpdateTimeoutCancelToken = null;
     $scope.countriesPromese = null;
-    $scope.getMap = function(){
+    $scope.getMap = function(parentEntity){
 
-            var countriesPromese = $q.defer();
+        var countriesPromese = $q.defer();
 
-        if($scope.countries == null) {
-            $scope.regionService.getCountries().then(
-                function (data) {
+        if(parentEntity == undefined || parentEntity == null)
+        {
+            $scope.addViewModel.mapLevel = "country";
+            $scope.addViewModel.selectedCountryId = null;
+            $scope.addViewModel.updateFormControls();
 
-                    $scope.countries = data;
-                    countriesPromese.resolve(data);
+
+        }
+        else
+        {
+            if( (parentEntity.area != undefined  && parentEntity.area != null) &&
+                (parentEntity.area.properties != undefined  && parentEntity.area.properties != null) &&
+                (parentEntity.area.properties.mapLevel != undefined  && parentEntity.area.properties.mapLevel != null))
+            {
+                switch(parentEntity.area.properties.mapLevel  )
+                {
+                    case "country":
+                        $scope.addViewModel.mapLevel = "province";
+                    break;
+                    case "province":
+                        $scope.addViewModel.mapLevel = "department";
+                    break;
+                    case "department" :
+                        $scope.addViewModel.mapLevel = "city";
+                    break
+                    default:
+                        $scope.addViewModel.mapLevel = "country";
+                        break;
                 }
-            );
+
+            }
         }
-        else {
-            if($scope.countriesTimeoutCancelToken != null)
-               $timeout.cancel($scope.countriesTimeoutCancelToken);
 
-            $scope.countriesTimeoutCancelToken= null;
+        switch($scope.addViewModel.mapLevel)
+        {
+            case 'province':
+                $scope.addViewModel.selectedCountryId = parentEntity.area.properties.id;
+                $scope.addViewModel.updateFormControls();
+                $scope.regionService.getProvinces($scope.addViewModel.selectedCountryId).then(
+                    function (data) {
 
-            $scope.countriesTimeoutCancelToken = $timeout(function(){
-                countriesPromese.resolve($scope.countries);
-                $timeout.cancel($scope.countriesTimeoutCancelToken);
+                        data[0].getID = $scope.mapGetID;
+                        countriesPromese.resolve(data);
+                    }
+                );
+            break;
+
+            case 'country' :
+                $scope.addViewModel.updateFormControls();
+                if($scope.countries == null) {
+                    $scope.regionService.getCountries().then(
+                        function (data) {
+
+                            $scope.countries = data;
+                            countriesPromese.resolve(data);
+                        }
+                    );
+                }
+                else {
+                    if($scope.countriesTimeoutCancelToken != null)
+                        $timeout.cancel($scope.countriesTimeoutCancelToken);
+
+                    $scope.countriesTimeoutCancelToken= null;
+
+                    $scope.countriesTimeoutCancelToken = $timeout(function(){
+                        countriesPromese.resolve($scope.countries);
+                        $timeout.cancel($scope.countriesTimeoutCancelToken);
+                        $scope.countriesTimeoutCancelToken= null;
+                    }, 5);
+                }
+            break;
+
+            default:
+                if($scope.countriesTimeoutCancelToken != null)
+                    $timeout.cancel($scope.countriesTimeoutCancelToken);
+
                 $scope.countriesTimeoutCancelToken= null;
-            }, 5);
+
+                $scope.countriesTimeoutCancelToken = $timeout(function(){
+
+                    var model = {
+                        type: "path",
+                        objects: [],
+                        getID: $scope.mapGetID};
+
+                    model.objects.push(parentEntity.area)
+
+                    countriesPromese.resolve(model);
+                    $timeout.cancel($scope.countriesTimeoutCancelToken);
+                    $scope.countriesTimeoutCancelToken= null;
+                }, 5);
+            break;
         }
-
-
         return countriesPromese.promise;
     }
     $scope.countriesClass = "countriesClass";
@@ -391,6 +531,14 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
             $timeout.cancel($scope.countriesUpdateTimeoutCancelToken);
 
         $scope.countriesPromese.notify(nwModel);
+    }
+
+    $scope.mapGetID = function(node){
+        if((node != null && node != undefined) && (node.properties != undefined) && (node.properties.id != undefined))
+        {
+            node.id = node.properties.id;
+            return node.properties.id;
+        }
     }
 
 
@@ -469,8 +617,16 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
                                 $scope.importExport.$intervalCounter = 3;
                                 $scope.importExport.importTimeoutCancelToken = $interval(function() {
 
-                                    $scope.countries = null;
-                                    $scope.updateMap(null);
+                                    //if($scope.importExport.$intervalCounter == 0)
+                                    //{
+                                        $scope.countries = null;
+                                        $scope.updateMap(null);
+                                    //}
+                                   // else
+                                   // {
+                                        //$scope.updateMap($scope.countries);
+                                   // }
+
 
                                     $scope.importExport.$intervalCounter -- ;
 
@@ -479,14 +635,14 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
                                         $timeout.cancel($scope.importExport.importTimeoutCancelToken);
                                         $scope.importExport.importTimeoutCancelToken = null;
                                     }
-                                }, 3, 3);
+                                }, 2, 3);
                             },
                             function(errMsg){
                                 tempData = "";
                                 tempData = null;
                             }
                         );
-                    }, 15);
+                    }, 20);
 
 
 

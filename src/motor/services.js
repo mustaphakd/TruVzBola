@@ -17,7 +17,8 @@ appservices.service('repositoryService', [ "$data", "$q", function($data, $q){
             id: {type: "int", key:true, computed: true},
             name: {type: "string", required: true},
             geometry:{type: "string"},
-            country:{ type: "country", required: true, inverseProperty: "provinces"}
+            country:{ type: "country", required: true, inverseProperty: "provinces"},
+            countryId:{type: "int", required: true}
         });
 
     $data.Entity.extend("disease",
@@ -33,7 +34,9 @@ appservices.service('repositoryService', [ "$data", "$q", function($data, $q){
             description: {type: "string", required: true},
             province:{type: "province"},
             country:{type: "country"},
-            contact: {type: "string", required: true}
+            contact: {type: "string", required: true},
+            countryId:{type: "int", required: true},
+            provinceId:{type: "int", required: true}
         });
 
     $data.Entity.extend("note",
@@ -41,7 +44,8 @@ appservices.service('repositoryService', [ "$data", "$q", function($data, $q){
             id: {type: "int", key:true, computed: true},
             detail: {type: String, required: true},
             quand:{type: Date},
-            dcase:{type:"dcase", required: true, inverseProperty:"notes"}
+            dcase:{type:"dcase", required: true, inverseProperty:"notes"},
+            dcaseId:{type: "int", required: true}
         });
 
     $data.Entity.extend("medsite",
@@ -50,7 +54,10 @@ appservices.service('repositoryService', [ "$data", "$q", function($data, $q){
             name: {type: "string", required: true},
             province:{ type: "province", required: true},
             location:{type:"gpslocation"},
-            detail: {type: String, required: true}
+            detail: {type: String, required: true},
+            country:{ type: "country", required: true},
+            countryId:{type: "int", required: true},
+            provinceId:{type: "int", required: true}
         });
 
     $data.Entity.extend("gpslocation",
@@ -70,7 +77,10 @@ appservices.service('repositoryService', [ "$data", "$q", function($data, $q){
             location:{type:"gpslocation"},
             initiallyReported:{type: Date},
             dateConfirmed:{type: Date},
-            notes:{type: Array, elementType: "note", inverseProperty:"dcase"}
+            notes:{type: Array, elementType: "note", inverseProperty:"dcase"},
+            country: {type: "country", required: true},
+            countryId:{type: "int", required: true},
+            provinceId:{type: "int", required: true}
         });
 
     /**************************************************************************************************/
@@ -88,7 +98,7 @@ appservices.service('repositoryService', [ "$data", "$q", function($data, $q){
             Cases: {type: $data.EntitySet, elementType: dcase}
         });
 
-    this.Db = new CDMDatabase({ provider: 'indexedDb', databaseName:'DiseaseMonitoringDb', version: 1 });
+    this.Db = new CDMDatabase({ provider: 'indexedDb', databaseName:'DiseaseMonitoringDb', version: 1.1 });
 
     /* debug version
 
@@ -163,7 +173,8 @@ appservices.factory('infomationService', [  "$location", "$q", "$timeout" , func
 
 }]);
 
-appservices.factory('regionService', [  "$location", "$q" , "repositoryService", function ( $location, $q, repositoryService) {
+//mapLevels: country, province, department, city
+appservices.factory('regionService', [  "$location", "$q" , "repositoryService","$data", function ( $location, $q, repositoryService, $data) {
     var service = {};
 
     service.addNewCountry = function(newItem){
@@ -197,7 +208,9 @@ appservices.factory('regionService', [  "$location", "$q" , "repositoryService",
             var data = repos.Countries.forEach(function(country){
                 var temp = JSON.parse(country.geometry);
                 var obj = { "type": "Feature", "properties": { }, "geometry": temp};
-                obj.properties.country = country.name;
+                obj.properties.label = country.name;
+                obj.properties.id = country.id;
+                obj.properties.mapLevel = "country";
                 jData.push(obj);
 
             }).then(function(){
@@ -262,6 +275,71 @@ appservices.factory('regionService', [  "$location", "$q" , "repositoryService",
         return importtCountryDeffered.promise;
     }
 
+    service.getProvinces = function(countryIdVal){
+        var newDeferredCountry = $q.defer();
+
+        var repos = repositoryService.Db;
+
+        repos.onReady(function() {
+            //format data
+            var jData = [];
+
+           repos.Provinces.forEach(function(province){
+
+               if(province.countryId == countryIdVal)
+               {
+                   var temp = JSON.parse(province.geometry);
+                   var obj = { "type": "Feature", "properties": { }, "geometry": temp};
+                   obj.properties.label = province.name;
+                   obj.properties.id = province.id;
+                   obj.properties.mapLevel = "province";
+
+                   jData.push(obj);
+               }
+           }).then(function(){
+               newDeferredCountry.resolve([{
+                   type:        'path',
+                   objects:     jData
+               }]);
+           });
+        });
+
+        return newDeferredCountry.promise;
+    }
+
+    service.addNewProvince = function(countryIdVal, newItem){
+        var newDeferredCountry = $q.defer();
+
+        var repos = repositoryService.Db;
+
+        repos.onReady(function() {
+
+            repos.Countries.single(function(country){
+                return  country.id == this.countryId
+            }, {countryId : countryIdVal})
+                .then(function(foundCountry){
+                    repos.Countries.attach(foundCountry);
+                    var prov = new province({ name: newItem.name, geometry: newItem.coord});
+                    prov.country = foundCountry;
+                    prov.countryId = foundCountry.id;
+
+                    repos.Provinces.add(prov);
+                    repos.saveChanges();
+
+                    var temp = JSON.parse(newItem.coord);
+                    var obj = { "type": "Feature", "properties": { }, "geometry": temp};
+                    obj.properties.label = newItem.name;
+                    obj.properties.id = newItem.id;
+                    obj.properties.mapLevel = "province";
+
+
+                    newDeferredCountry.resolve(obj);
+
+                });
+        });
+
+        return newDeferredCountry.promise;
+    }
 
     return service;
 
