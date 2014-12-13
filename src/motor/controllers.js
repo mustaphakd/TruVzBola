@@ -15,8 +15,8 @@ appControllers.controller('VideoListController', ['$scope', '$routeParams', '$lo
 
 }]);
 
-appControllers.controller('mainAppController',['$scope','$route', '$location','securityService', '$rootScope', '$modal',
-    function($scope, $route, $location, securityService, $rootScope, $modal){
+appControllers.controller('mainAppController',['$scope','$route', '$location','securityService', '$rootScope', '$modal', '$templateCache',
+    function($scope, $route, $location, securityService, $rootScope, $modal, $templateCache){
 
         $scope.$route = $route;
         $scope.$root = $rootScope;
@@ -98,12 +98,17 @@ appControllers.controller('mainAppController',['$scope','$route', '$location','s
         debugger;
         $scope.$root.$on('$routeChangeStart', function(scope, next, current){
             //console.log('Changing from '+angular.toJson(current)+' to '+angular.toJson(next));
+            if (typeof(current) !== 'undefined'){
+                $templateCache.remove(current.templateUrl);
+                $templateCache.remove(current.loadedTemplateUrl);
+            }
             if(next && next.$$route)
                 $scope.showNotification('loading ' + next.$$route.originalPath) ;
         });
 
         $scope.$root.$on('$routeChangeSuccess', function(scope, next, current){
             //console.log('Changing from '+angular.toJson(current)+' to '+angular.toJson(next));
+
             if(next && next.$$route)
             {
                 $scope.showNotification( 'done loading ' + next.$$route.originalPath);
@@ -113,6 +118,11 @@ appControllers.controller('mainAppController',['$scope','$route', '$location','s
         });
 
         $scope.$root.$on('$routeChangeError', function(scope, next, current){
+            $scope.showNotification( 'Changing from '+angular.toJson(current)+' to '+angular.toJson(next));
+        });
+
+        $scope.$root.$on('$routeUpdate', function(scope, next, current){
+            debugger;
             $scope.showNotification( 'Changing from '+angular.toJson(current)+' to '+angular.toJson(next));
         });
 /*

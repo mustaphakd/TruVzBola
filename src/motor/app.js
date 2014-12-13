@@ -5,10 +5,10 @@ appMd.config(['$routeProvider','$locationProvider', function ($routeProvider, $l
         //.when("/spots", { templateUrl: "views/hotspots.html"})
         .when("/information", { templateUrl: "views/information.html", controller:"infoController" })
         .when("/cases/add", { templateUrl: "views/add_case.html" })
-        .when("/reportcase", { templateUrl: "views/reportcase.html" })
+        .when("/reportcase", { templateUrl: "views/reportcase.html", controller:"reportcaseController" })//
         .when("/medcenters/add", { templateUrl: "views/add_medcenters.html" })
         .when("/medcenters", { templateUrl: "views/medcenters.html" })
-        .when("/regions/:country?/:province?", { templateUrl: "views/countriesProvinces.html", controller: "regionController" })
+        .when("/regions/:country?/:province?", { templateUrl: "views/countriesProvinces.html", controller: "regionController" }) //, reloadOnSearch: false
         .when("/spots/:countryId?/:provinceId?", { templateUrl: "views/hotspots.html" })
         .otherwise({ redirectTo: "spots" });
 

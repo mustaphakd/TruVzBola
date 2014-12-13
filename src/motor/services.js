@@ -368,3 +368,9 @@ appservices.factory('regionService', [  "$location", "$q" , "repositoryService",
     return service;
 
 }]);
+
+appservices.factory('reportCaseService', [  "$location", "$q" , "repositoryService","$data", function ( $location, $q, repositoryService, $data) {
+    var service = {};
+
+    return service;
+}]);

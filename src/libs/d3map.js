@@ -36,11 +36,11 @@
  */
 angular.module('oz.d3Map',[])
   .directive('ozD3Map', function ($timeout, D3ChartSizer) {
-    var xyz, g, projection, path, svg, width, height, objects, resizeBind, zoomBvr, hightlightOnMouseOver;
+   /* var xyz, g, projection, path, svg, width, height, objects, resizeBind, zoomBvr, hightlightOnMouseOver;
         var timeoutToken, tip;
     var stack = [];
     var sizer = new D3ChartSizer();
-
+        */
     function setDefaults(attrs) {
       attrs.widthScale = attrs.widthScale || '1.4';
       attrs.heightScale = attrs.heightScale || '1.5';
@@ -90,6 +90,12 @@ angular.module('oz.d3Map',[])
         processCoord:   '&'
       },
         controller: function($scope){
+
+            $scope.xyz, $scope.g, $scope.projection, $scope.path, $scope.svg, $scope.actualWidth, $scope.actualHeight, $scope.objects, $scope.resizeBind, $scope.zoomBvr, $scope.hightlightOnMouseOver,
+                $scope.timeoutToken, $scope.tip = null;
+            $scope.stack = [];
+            $scope.sizer = new D3ChartSizer();
+
             var hydratedScale = 0;
             var hydratedTranslationCoord = [];
             var prevCoordTrans = [];
@@ -140,65 +146,73 @@ angular.module('oz.d3Map',[])
               return false;
             }
 
-              hightlightOnMouseOver = attrs.highlightOnMouseOver;
-                svg = d3.select(angular.element($element)[0]).append('svg');
-                g = svg.append('g');
-                sizer.setSizes($scope, $element.parent());
-                 var originalScale = $scope.scale;
-                drawMap();
+              if($scope.zoomBvr !== undefined) {
 
-              if($scope.getMapUpdater && angular.isFunction($scope.getMapUpdater))
-              {
-                  try {
-                      $scope.getMapUpdater().then(function () {
-                          },
-                          function () {
-                          },
-                          function (newData) {
-                              //addObjects(newData);
+                  $scope.zoomBvr = d3.behavior.zoom(g)
+                      .scaleExtent([.2, 25])
+                      .on("zoom", null)
+                      .on("zoomstart", null);
 
-                              $scope.height = false;
-                              $scope.width = false;
-                              sizer.setSizes($scope, $element.parent());
-                              var originalScale = $scope.scale;
-                              if(newData == null)
-                              {
-                                  objects = null;
-                                  drawMap();
-                              }
-                              else
-                              {
-                                  if(angular.isArray(newData))
-                                  {
-                                      objects[0].objects = newData;
-                                      addObjects(objects);
-                                  }
-                                  else if(newData.requiredAction != undefined && newData.requiredAction != null)
-                                  {
-                                      if(newData.requiredAction == "viualAppend")
-                                        addObjects(newData.actualData)
-                                  }
-                                  else {
-                                      objects[0].objects.push(newData);
+
+
+              }
+
+              $scope.hightlightOnMouseOver = attrs.highlightOnMouseOver;
+              $scope.svg = d3.select(angular.element($element)[0]).append('svg');
+              $scope.g = $scope.svg.append('g');
+              $scope.sizer.setSizes($scope, $element.parent());
+                  var originalScale = $scope.scale;
+                  drawMap();
+
+                  if ($scope.getMapUpdater && angular.isFunction($scope.getMapUpdater)) {
+                      try {
+                          $scope.getMapUpdater().then(function () {
+                              },
+                              function () {
+                              },
+                              function (newData) {
+                                  //addObjects(newData);
+
+                                  $scope.height = false;
+                                  $scope.width = false;
+                                  $scope.sizer.setSizes($scope, $element.parent());
+                                  var originalScale = $scope.scale;
+                                  if (newData == null) {
+                                      $scope.objects = null;
                                       drawMap();
                                   }
+                                  else {
+                                      if (angular.isArray(newData)) {
+                                          $scope.objects[0].objects = newData;
+                                          addObjects(objects);
+                                      }
+                                      else if (newData.requiredAction != undefined && newData.requiredAction != null) {
+                                          if (newData.requiredAction == "viualAppend")
+                                              addObjects(newData.actualData)
+                                      }
+                                      else {
+                                          $scope.objects[0].objects.push(newData);
+                                          drawMap();
+                                      }
 
 
-                              }
+                                  }
 
-                          });
+                              });
+                      }
+                      catch (err) {
+
+                          console.log(err);
+                      }
                   }
-                  catch(err){
 
-                      console.log(err);
-                  }
-              }
+
 
 
 
 
             function drawMap() {
-              stack = [];
+                $scope.stack = [];
               if (!$scope.widthScale && $scope.mapWidth) {
                 $scope.widthScale = $scope.width/$scope.mapWidth;
               }
@@ -206,44 +220,43 @@ angular.module('oz.d3Map',[])
                 $scope.heightScale = $scope.height/$scope.mapHeight;
               }
               $scope.scale = originalScale*$scope.width;
-              width = $scope.width;
-              height = $scope.height;
-              projection = d3.geo.mercator()
+                $scope.actualWidth = $scope.width;
+                $scope.actualHeight = $scope.height;
+                $scope.projection = d3.geo.mercator()
                 .scale($scope.scale)
                 ///.translate([width/$scope.widthScale, height/$scope.heightScale]);
-                .translate([width/2, height]);
+                .translate([$scope.actualWidth/2, $scope.actualHeight]);
 
-                svg.attr('preserveAspectRatio', 'xMidYMid')
-                .attr('viewBox', Math.round(($scope.leftOffset/100)*width) + ' ' + Math.round(($scope.topOffset/100)*height) + ' ' + Math.round(width*(1 - ($scope.rightOffset/100))) + ' ' + Math.round(height*(1 - ($scope.bottomOffset/100))))
-                .attr('width', width)
-                .attr('height', height);
+                $scope.svg.attr('preserveAspectRatio', 'xMidYMid')
+                .attr('viewBox', Math.round(($scope.leftOffset/100)* $scope.actualWidth) + ' ' + Math.round(($scope.topOffset/100)* $scope.height) + ' ' + Math.round($scope.actualWidth*(1 - ($scope.rightOffset/100))) + ' ' + Math.round($scope.actualHeight*(1 - ($scope.bottomOffset/100))))
+                .attr('width', $scope.actualWidth)
+                .attr('height', $scope.actualHeight);
 
-              path = d3.geo.path().projection(projection);
+                $scope.path = d3.geo.path().projection($scope.projection);
 
                 /*************************************************/
-                zoomBvr = d3.behavior.zoom(g)
-                    //.translate([0, 0])
-                    //.scale(1)
+               // zoomBvr = null;
+                $scope.zoomBvr = d3.behavior.zoom($scope.g)
                     .scaleExtent([.2, 25])
                     .on("zoom", zoomed)
                     .on("zoomstart", zoomStarted);
 
-              if (!objects) {
+              if (!$scope.objects) {
                 $scope.getMap(null).then(function (newObjects) {
                   if (!newObjects) {
                     console.error('map objects empty');
                     return false;
                   }
-                  objects = newObjects;
-                  g.selectAll('g').remove();
-                  addObjects(objects);
+                    $scope.objects = newObjects;
+                    $scope.g.selectAll('g').remove();
+                  addObjects($scope.objects);
 
-                    svg.call(zoomBvr) // delete this line to disable free zooming
-                        .call(zoomBvr.event);
+                    $scope.svg.call($scope.zoomBvr) // delete this line to disable free zooming
+                        .call($scope.zoomBvr.event);
 
-                    tip = null;
+                    $scope.tip = null;
 
-                    tip = d3.tip()
+                    $scope.tip = d3.tip()
                         .attr('class', 'd3-tip')
                         .offset([-1, 0])
                         .html(function(d) {
@@ -253,12 +266,12 @@ angular.module('oz.d3Map',[])
 
 
                     //maybe based on length. 0 = country, 1 = provinces ....
-                    svg.call(tip);
+                    $scope.svg.call($scope.tip);
                 });
               }
               else {
-                g.selectAll('g').remove();
-                addObjects(objects);
+                  $scope.g.selectAll('g').remove();
+                addObjects($scope.objects);
               }
 
                 /*svg
@@ -297,11 +310,11 @@ angular.module('oz.d3Map',[])
                   return false;
                 }
               }
-              var nodesParent = g.append('g');
+              var nodesParent = $scope.g.append('g');
               switch (objectsType) {
                 case 'circle':
                   nodes = nodesParent
-                    .attr('id', 'level' + parseInt(stack.length + 1))
+                    .attr('id', 'level' + parseInt($scope.stack.length + 1))
                     .selectAll('path')
                     .data(objects)
                     .enter()
@@ -312,7 +325,7 @@ angular.module('oz.d3Map',[])
                     .attr('id', getID)
                     .attr('class', $scope.pointClass)
                     .attr('transform', function (d) {
-                      return 'translate(' + projection([
+                      return 'translate(' + $scope.projection([
                         d.location.longitude,
                         d.location.latitude
                       ]) + ')';
@@ -320,13 +333,13 @@ angular.module('oz.d3Map',[])
                   break;
                 case 'text':
                   nodes = nodesParent
-                    .attr('id', 'level' + parseInt(stack.length + 1))
+                    .attr('id', 'level' + parseInt($scope.stack.length + 1))
                     .selectAll('text')
                     .data(objects)
                     .enter()
                     .append('text')
                     .attr('transform', function (d) {
-                      var centerCoordinates = projection([
+                      var centerCoordinates = $scope.projection([
                         d.location.longitude,
                         d.location.latitude
                       ]);
@@ -339,15 +352,15 @@ angular.module('oz.d3Map',[])
                     .text(getContent);
                   break;
                 case 'div':
-                  nodesParent = nodesParent.attr('id', 'level' + parseInt(stack.length + 1))
-                    .append('foreignObject').attr("width", width).attr("height", height);
+                  nodesParent = nodesParent.attr('id', 'level' + parseInt($scope.stack.length + 1))
+                    .append('foreignObject').attr("width", $scope.actualWidth).attr("height", $scope.actualHeight);  // may need to prepend scope before height and width
                   nodes = nodesParent
                     .selectAll('div')
                     .data(objects)
                     .enter()
                     .append('xhtml:div')
                     .attr('style', function (d) {
-                      var centerCoordinates = projection([
+                      var centerCoordinates = $scope.projection([
                         d.location.longitude,
                         d.location.latitude
                       ]);
@@ -362,23 +375,23 @@ angular.module('oz.d3Map',[])
                 //case 'path':
                   default:
                   var areaClass = $scope.areaClass;
-                  if (stack.length > 0) {
+                  if ($scope.stack.length > 0) {
                     areaClass = areaClass + " "+ $scope.activeClass;
                   }
 
                     //objects = objects.objects;
                   nodes = nodesParent
-                    .attr('id', 'level' + parseInt(stack.length + 1))
+                    .attr('id', 'level' + parseInt($scope.stack.length + 1))
                     .selectAll("path")
                     .data(objects)
                     .enter()
                     .append("path")
                     .attr("id", getID)
-                      .attr("data_level", parseInt(stack.length + 1) )
+                      .attr("data_level", parseInt($scope.stack.length + 1) )
                     .attr("class", areaClass)
-                      .attr("d", path)
+                      .attr("d", $scope.path)
                     .on("click", function (d) {
-                          tip.hide(d);
+                          $scope.tip.hide(d);
 
                           if(!$scope.processCoord || !angular.isFunction($scope.processCoord))
                           {
@@ -389,7 +402,7 @@ angular.module('oz.d3Map',[])
                           }
                           else
                           {
-                              var longLat = projection.invert(d3.mouse(this));
+                              var longLat = $scope.projection.invert(d3.mouse(this));
                               var proceed = $scope.processCoord()(longLat, d);
 
                               if(proceed == false)
@@ -402,7 +415,7 @@ angular.module('oz.d3Map',[])
                           }
                     });
 
-                    if(hightlightOnMouseOver)
+                    if($scope.hightlightOnMouseOver)
                     {
                         nodes.on("mouseover", function(d) {
 
@@ -414,20 +427,20 @@ angular.module('oz.d3Map',[])
 
                                 d.context = this.getBoundingClientRect();
 
-                            tip.offset(  [this.getBBox().height / 2, 0] );
+                            $scope.tip.offset(  [this.getBBox().height / 2, 0] );
 
-                            tip.show(d);
+                            $scope.tip.show(d);
                         });
 
                         nodes.on("mouseout", function(d) {
-                            tip.hide(d);
+                            $scope.tip.hide(d);
                         });
                     }
 
-                     timeoutToken = $timeout(function () {
+                      $scope.timeoutToken = $timeout(function () {
                               adjustTranslation();
-                              $timeout.cancel(timeoutToken);
-                              timeoutToken = null;
+                              $timeout.cancel($scope.timeoutToken);
+                         $scope.timeoutToken = null;
                           }, 5);
               }
               if (angular.isFunction(nodeHandler)) {
@@ -440,17 +453,17 @@ angular.module('oz.d3Map',[])
             function adjustTranslation(forced){
 
                   var localforced = forced || false;
-                  var svgClientRect = svg.node().getBoundingClientRect();
-                  var gClientRect = g.node().getBoundingClientRect();
-                  var btmDiff =   (svgClientRect.top - gClientRect.top + d3.transform(g.attr("transform")).translate[1])  ;
+                  var svgClientRect = $scope.svg.node().getBoundingClientRect();
+                  var gClientRect = $scope.g.node().getBoundingClientRect();
+                  var btmDiff =   (svgClientRect.top - gClientRect.top + d3.transform($scope.g.attr("transform")).translate[1])  ;
 
-                  var leftDiff = d3.transform(g.attr("transform")).translate[0] +  svgClientRect.left - gClientRect.left;
+                  var leftDiff = d3.transform($scope.g.attr("transform")).translate[0] +  svgClientRect.left - gClientRect.left;
                   var wScale = 0;
                   var hScale = 0;
 
                 var heightDiff = svgClientRect.height - gClientRect.height;
 
-                  if(stack.length <= 0 || (localforced == true))
+                  if($scope.stack.length <= 0 || (localforced == true))
                   {
                       wScale = (svgClientRect.width * 10000) / (gClientRect.width * 100)
                       wScale = wScale / 100;
@@ -467,18 +480,18 @@ angular.module('oz.d3Map',[])
                        // doZoom = true;
                       }
 
-                      if(localforced == false)
+                      if((localforced == false) && (localScale != NaN ))//
                       {
                           $scope.conserveScale(localScale);
 
                           btmDiff = Math.max(heightDiff, btmDiff) * localScale;
 
-                          $scope.hydrateTranslation(stack.length, btmDiff);
+                          $scope.hydrateTranslation($scope.stack.length, btmDiff);
                       }
                       else {
                           localScale = $scope.retrieveScale();
 
-                          var coord = $scope.getHydrateTranslation(stack.length);
+                          var coord = $scope.getHydrateTranslation($scope.stack.length);
 
                           if(coord != undefined) {
 
@@ -487,7 +500,9 @@ angular.module('oz.d3Map',[])
                           }
                           coord = null;
                       }
-                      g.attr("transform", "translate(" + (  leftDiff) + ", " + ( btmDiff ) + ")scale(" + localScale + ")");
+
+
+                      $scope.g.attr("transform", "translate(" + (  leftDiff) + ", " + ( btmDiff ) + ")scale(" + localScale + ")");
 
                       /*if(doZoom)
                       zoomed(svg);*/
@@ -506,36 +521,36 @@ angular.module('oz.d3Map',[])
               }
 
             function mapClicked(area, fromLevel) {
-              if (stack.length > 0) {
+              if ($scope.stack.length > 0) {
                 //var toRemove = g.selectAll('#level' + parseInt(stack.length + 1));
 
-                  for(var i = parseInt(fromLevel) ; i <=stack.length; i++)
+                  for(var i = parseInt(fromLevel) ; i <=$scope.stack.length; i++)
                   {
-                      var toRemove = g.selectAll('#level' + (i + 1));
+                      var toRemove = $scope.g.selectAll('#level' + (i + 1));
                       if (toRemove) {
                           toRemove.remove();
                       }
                   }
-                  while(stack.length > fromLevel)
+                  while($scope.stack.length > fromLevel)
                   {
-                      stack.shift();
+                      $scope.stack.shift();
                   }
                   //stack.length = fromLevel;
               }
               //if (stack[0]) {
               //  g.selectAll('#' + stack[0].id).style('display', null);
               //}
-              if (area && (!stack[0] || stack[0].id !== area.id)) {
-                xyz = getXyz(area);
-                if (fromLevel <= stack.length) {
-                  stack[0] = area;
+              if (area && (!$scope.stack[0] || $scope.stack[0].id !== area.id)) {
+                  $scope.xyz = getXyz(area);
+                if (fromLevel <= $scope.stack.length) {
+                    $scope.stack[0] = area;
                 }
                 else {
-                  stack.unshift(area);
+                    $scope.stack.unshift(area);
                 }
-                g.selectAll('.' + $scope.activeClass).classed($scope.activeClass, false);
-                  var parentEntity = {area: area, stack: stack};
-                $scope.getMap( {parentEntity: {area: area, stack: stack}}).then(function (mapObjects) {
+                  $scope.g.selectAll('.' + $scope.activeClass).classed($scope.activeClass, false);
+                  var parentEntity = {area: area, stack: $scope.stack};
+                $scope.getMap( {parentEntity: {area: area, stack: $scope.stack}}).then(function (mapObjects) {
                   addObjects(mapObjects);
                   //zoom(xyz);
                     zoomed(area);
@@ -543,7 +558,7 @@ angular.module('oz.d3Map',[])
                     parentEntity = null;
                 }, function () {
                   if ($scope.activeClass) {
-                    g.selectAll('#' + area.id).classed($scope.activeClass, true);
+                      $scope.g.selectAll('#' + area.id).classed($scope.activeClass, true);
                       parentEntity = null;
                   }
                   if ($scope.zoomEmptyAreas && $scope.zoomEmptyAreas !== 'false') {
@@ -552,18 +567,18 @@ angular.module('oz.d3Map',[])
                   }
                 });
               } else {
-                stack.shift();
-                xyz = [width/$scope.widthScale, height/$scope.heightScale, 1];
+                  $scope.stack.shift();
+                  $scope.xyz = [$scope.actualWidth/$scope.widthScale, $scope.actualHeight/$scope.heightScale, 1];
                 if ($scope.activeClass) {
-                  g.selectAll('.' + $scope.activeClass).classed($scope.activeClass, false);
+                    $scope.g.selectAll('.' + $scope.activeClass).classed($scope.activeClass, false);
                 }
                   if (fromLevel > 1) {
                       //var toRemove = g.selectAll('#level' + parseInt(stack.length + 1));
-                      var toRemove = g.selectAll('#level' + parseInt(fromLevel));
+                      var toRemove = $scope.g.selectAll('#level' + parseInt(fromLevel));
                       if (toRemove) {
                           toRemove.remove();
                       }
-                      zoomed(stack[0], false)
+                      zoomed($scope.stack[0], false)
                   }
                   else
                   {
@@ -575,16 +590,16 @@ angular.module('oz.d3Map',[])
                   //zoomed(area)
 
               }
-                $scope.preserveAspectRatio(d3.transform(g.attr("transform")).translate, d3.transform(g.attr("transform")).scale);
+                $scope.preserveAspectRatio(d3.transform($scope.g.attr("transform")).translate, d3.transform($scope.g.attr("transform")).scale);
             }
 
             function zoom(xyz) {
-              g.transition()
+                $scope.g.transition()
                 .duration(750)
-                .attr('transform', 'translate(' + projection.translate() + ')scale(' + xyz[2] + ')translate(-' + xyz[0] + ',-' + xyz[1] + ')');
+                .attr('transform', 'translate(' + $scope.projection.translate() + ')scale(' + xyz[2] + ')translate(-' + xyz[0] + ',-' + xyz[1] + ')');
               if ($scope.pointClass) {
-                g.selectAll('.' + $scope.pointClass)
-                  .attr('d', path.pointRadius(20.0/xyz[2]));
+                  $scope.g.selectAll('.' + $scope.pointClass)
+                  .attr('d', $scope.path.pointRadius(20.0/xyz[2]));
               }
             }
 
@@ -607,9 +622,9 @@ angular.module('oz.d3Map',[])
                       }
                       if(d3.event.sourceEvent.wheelDelta == undefined) {
 
-                          var localScale = d3.transform(g.attr("transform")).scale;
+                          var localScale = d3.transform($scope.g.attr("transform")).scale;
 
-                          var prevTransCoord = d3.transform(g.attr("transform")).translate;
+                          var prevTransCoord = d3.transform($scope.g.attr("transform")).translate;
                           var eventTransCoord = d3.event.translate;
 
                           var xy = [];
@@ -619,7 +634,7 @@ angular.module('oz.d3Map',[])
                           if($scope.multiplierEffect > .3)
                             $scope.multiplierEffect -= .005;
 
-                          g.attr("transform", "translate(" + xy + ")scale(" + localScale +  ")");
+                          $scope.g.attr("transform", "translate(" + xy + ")scale(" + localScale +  ")");
 
                           $scope.prevCoordTrans(xy);
                           localScale = null;
@@ -628,61 +643,61 @@ angular.module('oz.d3Map',[])
                       else
                       {
                           $scope.conserveScale(d3.event.scale);
-                          g.style("stroke-width", 1.5 / d3.event.scale + "px");
-                          g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+                          $scope.g.style("stroke-width", 1.5 / d3.event.scale + "px");
+                          $scope.g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
                       }
 
                   }
                   else
                   {
-                      var bounds = path.bounds(d);
+                      var bounds = $scope.path.bounds(d);
                       var dWidth = (bounds[1][0] - bounds[0][0]);
                       var dheight = (bounds[1][1] - bounds[0][1]);
                       //var z = 1/Math.max(wScale, hScale);
 
-                      var svgClientRect = svg.node().getBoundingClientRect();
-                      var gClientRect = g.node().getBoundingClientRect();
+                      var svgClientRect = $scope.svg.node().getBoundingClientRect();
+                      var gClientRect = $scope.g.node().getBoundingClientRect();
                       var dClientRect = d.thisRef.getBoundingClientRect();
 
-                      var localEleWidthScale = (width * 1000000) / (dWidth * 10000 );
+                      var localEleWidthScale = ($scope.actualWidth * 1000000) / (dWidth * 10000 );
                       localEleWidthScale /= 100;
-                      var localEleHeightScale = (height * 1000000) / (dheight * 10000);
+                      var localEleHeightScale = ($scope.actualHeight * 1000000) / (dheight * 10000);
                       localEleHeightScale /= 100;
                       var localEleScale = Math.min(localEleWidthScale, localEleHeightScale);
 
-                      var prevCoods = d3.transform(g.attr("transform")).translate;
+                      var prevCoods = d3.transform($scope.g.attr("transform")).translate;
 
                       if(hydrateTranslation)
-                        $scope.hydrateTranslation(stack.length, d3.transform(g.attr("transform")).translate);
-                      g.attr("transform", "translate(" + (  prevCoods[0]) + ", " + ( prevCoods[1] ) + ")scale(" + localEleScale + ")");
+                        $scope.hydrateTranslation($scope.stack.length, d3.transform($scope.g.attr("transform")).translate);
+                      $scope.g.attr("transform", "translate(" + (  prevCoods[0]) + ", " + ( prevCoods[1] ) + ")scale(" + localEleScale + ")");
 
-                      svgClientRect = svg.node().getBoundingClientRect();
-                      gClientRect = g.node().getBoundingClientRect();
+                      svgClientRect = $scope.svg.node().getBoundingClientRect();
+                      gClientRect = $scope.g.node().getBoundingClientRect();
                       dClientRect = d.thisRef.getBoundingClientRect();
 
-                     var eleLeftTrans =  d3.transform(g.attr("transform")).translate[0]   + (-( gClientRect.left  - svgClientRect.left )) - (dClientRect.left  - gClientRect.left  ) ;  ;
-                     var eletopTrans =   d3.transform(g.attr("transform")).translate[1]     + (-( gClientRect.top  - svgClientRect.top )) - (dClientRect.top  - gClientRect.top  ) ;
+                     var eleLeftTrans =  d3.transform($scope.g.attr("transform")).translate[0]   + (-( gClientRect.left  - svgClientRect.left )) - (dClientRect.left  - gClientRect.left  ) ;  ;
+                     var eletopTrans =   d3.transform($scope.g.attr("transform")).translate[1]     + (-( gClientRect.top  - svgClientRect.top )) - (dClientRect.top  - gClientRect.top  ) ;
 
-                      var localScale =  d3.transform(g.attr("transform")).scale;
+                      var localScale =  d3.transform($scope.g.attr("transform")).scale;
 
-                      g.attr("transform", "translate(" + (  eleLeftTrans) + ", " + ( eletopTrans ) + ")scale(" + localScale + ")");
+                      $scope.g.attr("transform", "translate(" + (  eleLeftTrans) + ", " + ( eletopTrans ) + ")scale(" + localScale + ")");
                       eleLeftTrans = eletopTrans = localEleWidthScale = prevCoods = localEleHeightScale =   svgClientRect = gClientRect = dClientRect = null;
 
                   }
               }
 
             function getXyz(d) {
-              var bounds = path.bounds(d);
-              var wScale = (bounds[1][0] - bounds[0][0])/width;
-              var hScale = (bounds[1][1] - bounds[0][1])/height;
+              var bounds = $scope.path.bounds(d);
+              var wScale = (bounds[1][0] - bounds[0][0])/$scope.actualWidth;
+              var hScale = (bounds[1][1] - bounds[0][1])/$scope.actualHeight;
               var z = 1/Math.max(wScale, hScale);
               var x = (bounds[1][0] + bounds[0][0])/$scope.zoomXscale;
-              var y = (bounds[1][1] + bounds[0][1])/$scope.zoomYscale + (height/z/6);
+              var y = (bounds[1][1] + bounds[0][1])/$scope.zoomYscale + ($scope.actualHeight/z/6);
               return [x, y, z];
             }
 
-            if (!resizeBind) {
-              resizeBind = true;
+            if (!$scope.resizeBind) {
+                $scope.resizeBind = true;
               $(window).resize(function () {
                 var newHeight = $(window).height();
                 var newWidth = $(window).width();
@@ -690,7 +705,7 @@ angular.module('oz.d3Map',[])
                   if ($(window).height() === newHeight && $(window).width() === newWidth) {
                     $scope.height = false;
                     $scope.width = false;
-                    sizer.setSizes($scope, $element.parent());
+                      $scope.sizer.setSizes($scope, $element.parent());
                     drawMap();
                   }
                 }, 200);
