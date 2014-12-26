@@ -89,6 +89,42 @@ appControllers.controller('mainAppController',['$scope','$route', '$location','s
             };
         }
 
+        $scope.showSaveModal = function(title, content, hasTitle, showCloseButton){
+            //debugger;
+
+            var scope = $scope.$new();
+            scope.hasModalTitle = true;
+            scope.modalTitle = "musmus";
+
+
+            hasTitle = (typeof hasTitle === "undefined") ? true : hasTitle;
+            if(hasTitle)
+            {
+                scope.modalTitle = title;
+                scope.modalContent = content;
+            }
+            else{
+                scope.modalContent = content;
+            }
+
+            showCloseButton = (typeof showCloseButton === "undefined") ? true : showCloseButton;
+
+            var $modalInstance = $modal.open({
+                templateUrl: 'views/modalSavedTpl.html',
+                //controller: 'ModalInstanceCtrl',
+                scope: scope
+            });
+
+            scope.ok = function () {
+                $modalInstance.close();
+            };
+
+            scope.cancel = function () {
+                $modalInstance.dismiss('cancel');
+                scope.$destroy();
+            };
+        }
+
         /***** alert modal structs****/
         $scope.alert = function(msg){
             debugger;
@@ -160,23 +196,818 @@ appControllers.controller('medcentersController', ['$scope', '$routeParams', '$l
     $scope.$routeParams = $routeParams;
 }]);
 
-appControllers.controller('addMedcenterController', ['$scope', '$routeParams', '$location', 'addMedCenterService', function ($scope, $routeParams, $location, addMedCenterService) {
+appControllers.controller('addMedcenterController', ['$scope', '$routeParams', '$location', 'medService','regionService', '$q',  '$timeout',
+    function ($scope, $routeParams, $location, medService, regionService, $q, $timeout) {
     debugger;
-    $scope.addMedCenterService = addMedCenterService;
+    $scope.addMedCenterService = medService;
+    $scope.regionService = regionService;
     $scope.$routeParams = $routeParams;
+
+        $scope.getMap = function (parentEntity) {
+
+            var countriesPromese = $q.defer();
+
+            var localCache = [];
+
+            $scope.regionService.getCountries().then(
+                function (data) {
+
+                    data[0].getID = $scope.mapGetID;
+                    localCache = data;
+
+                    $scope.regionService.getAllProvinces().then(
+                        function (data) {
+
+                            data[0].getID = $scope.mapGetID;
+
+                            var arrLength = data[0].objects.length;
+
+                            for (var i = 0; i < arrLength; i++) {
+                                localCache[0].objects.push(data[0].objects[i])
+                            }
+                            countriesPromese.resolve(localCache);
+
+                            localCache = null;
+                        }
+                    );
+                }
+            );
+
+
+            return countriesPromese.promise;
+        }
+        $scope.countriesClass = "countriesClass";
+        $scope.caseTypes = [];
+
+        $scope.latLongPromise = null;
+
+        $scope.getMapUpdate = function () {
+            if ($scope.countriesPromese == null)
+                $scope.countriesPromese = $q.defer();
+
+            return $scope.countriesPromese.promise;
+        }
+
+        $scope.mapGetID = function (node) {
+            if ((node != null && node != undefined) && (node.properties != undefined)
+                && (node.properties.id != undefined) && (node.properties.mapLevel != undefined)) {
+                node.id = node.properties.id;
+                return node.id;
+            }
+        }
+
+// load them as markers with custom markers for each type of med center
+    $scope.loadExistingMedCenters = function(){
+
+        if($scope.markersLoader != null)
+            $scope.markersLoader.notify(null);
+
+    };
+
+    $scope.processLatLong = function(latLong, node, ObjRecordMarkerLocation){
+        if(!$scope.newMedCenterModel.formOpenned)
+            return false;
+
+        if($scope.newMedCenterModel.centerType == null)
+        {
+            $scope.quickIcon = $scope.icons[0];
+        }
+        else
+        {
+            $scope.quickIcon = $scope.getCustomIcon($scope.newMedCenterModel.centerType);
+        }
+
+        ObjRecordMarkerLocation.recordMarkerLocation = false;
+
+        if ((node != null && node != undefined) && (node.properties != undefined)
+            && (node.properties.mapLevel != undefined) && (node.properties.mapLevel != "country"))
+        {
+            ObjRecordMarkerLocation.recordMarkerLocation = true;
+
+            $scope.newMedCenterModel.country = node.properties.country
+            $scope.newMedCenterModel.province = node.properties.label;
+
+            $scope.newMedCenterModel.countryId = node.properties.countryId
+            $scope.newMedCenterModel.provinceId = node.properties.id;
+        }
+
+        return false;
+
+    };
+
+    $scope.getLeafletLatLongCoord = function(lat, long){
+
+        $scope.newMedCenterModel.latitude = lat;
+        $scope.newMedCenterModel.longitude = long;
+    };
+
+    $scope.setLeafletLatLongCoord = function(){
+
+            if($scope.latLongPromise == null)
+                $scope.latLongPromise = $q.defer();
+            return $scope.latLongPromise.promise;
+        };
+
+
+        /*******************************************Icons*****************************************/
+    $scope.markerIconUpdaterPromesse = null;
+    $scope.getMarkerIconUpdater = function(){
+
+        if($scope.markerIconUpdaterPromesse == null)
+            $scope.markerIconUpdaterPromesse = $q.defer();
+
+
+        return $scope.markerIconUpdaterPromesse.promise;
+    };
+
+    $scope.medIcon = L.Icon.extend({
+        options: {
+            iconSize:     [20, 32.8],
+            iconAnchor:   [22, 24],
+            popupAnchor:  [-3, -76]
+        }
+    });
+
+    $scope.icons = [
+            new $scope.medIcon({
+                iconUrl: 'motor/images/tent.png'
+            }),
+            new $scope.medIcon({
+                iconUrl: 'motor/images/csu-icon.png'
+            }),
+            new $scope.medIcon({
+                iconUrl: 'motor/images/chr-icon.png'
+            }),
+            new $scope.medIcon({
+                iconUrl: 'motor/images/chu-icon.png'
+            })
+        ];
+
+    $scope.quickIcon = $scope.icons[0];
+
+        /*********************************************************************/
+        $scope.markersLoader = null;
+
+    $scope.getMarkerIcon = function(){
+
+        return $scope.quickIcon;
+    };
+
+    $scope.getCustomIcon = function(flg){
+
+        switch(flg)
+        {
+            case 'csu':
+                return $scope.icons[1];
+                break;
+            case 'chr':
+                return $scope.icons[2];
+                break;
+            case 'chu':
+                return $scope.icons[3];
+                break;
+            default:
+                return  $scope.icons[0];
+                break;
+        }
+    };
+
+    $scope.medCenterTypeChanged = function(){
+        $scope.quickIcon = $scope.getCustomIcon($scope.newMedCenterModel.centerType);
+
+        if($scope.markerIconUpdaterPromesse != null)
+        {
+            $scope.markerIconUpdaterPromesse.notify($scope.quickIcon);
+        }
+    };
+
+    $scope.markersLoaderUpdater = function(){
+        if($scope.markersLoader == null)
+            $scope.markersLoader = $q.defer();
+
+        $scope.timeoutToken = $timeout(function(){
+            $timeout.cancel($scope.timeoutToken);
+            $scope.timeoutToken = null;
+
+            $scope.markersLoader.notify(null);
+        },3);
+
+        return $scope.markersLoader.promise;
+    };
+
+// map : ..., markers: ....
+    $scope.loadMarkers = function(mapWrapper){
+
+        if(mapWrapper == null || mapWrapper == undefined)
+            return;
+
+        var markersLength = mapWrapper.markers.length;
+
+        for(i=0;i<markersLength;i++) {
+            var mrker = mapWrapper.markers.shift();
+            mapWrapper.map.removeLayer(mrker);
+            mrker = null;
+        }
+
+        $scope.addMedCenterService.getMedSites().then(function(data)
+        {
+
+            if(data != null)
+            {
+                var dataLenth = data.length;
+
+                for(var i = 0; i < dataLenth; i++)
+                {
+                    var icon = $scope.getCustomIcon(data[i].centerType);
+                    var marker = L.marker([data[i].locationLat, data[i].locationLong], {title: data[i].name, icon: icon })
+                        .addTo(mapWrapper.map)
+                        .bindPopup("<h4>" + data[i].name + "</h4><h6>" + data[i].provinceName + "</h6>" +
+                        "<h6>" + data[i].countryName + "</h6>"  +"" + data[i].detail );
+                    mapWrapper.markers.push(marker);
+                }
+            }
+
+        }, function(msg){});
+    };
+
+
+/********************* New Med center Model*****************************/
+
+        $scope.newMedCenterModel =  {
+            name: null,
+            capacity: null,
+            centerType: null,
+            country: null,
+            province: null,
+            countryId: null,
+            provinceId: null,
+            latitude: null,
+            longitude: null,
+            detail: null
+        }
+
+        $scope.newMedCenterModel.formOpenned = false;
+
+        $scope.newMedCenterModel.processing = false;
+        $scope.newMedCenterModel.buttonsDivClass = "divBtn";
+        $scope.medCenterOptions = [
+            {name: "Centre d'acceuillle",
+             id: 'cne'},
+            {name: "Centre de Sante Urbaine",
+                id: 'csu'},
+            {name: "Centre Hospitalier Regional",
+                id: 'chr'},
+            {name: "Centre de Hospitalier Universitaire",
+                id: 'chu'},
+
+        ];
+
+
+        $scope.validation = {
+            errClass : "has-error has-feedback",
+            name : { errorClass : "", showError : false}, // from selection dropdown
+            centerType : { errorClass : "", showError : false},
+            country : { errorClass : "", showError : false},
+            province : { errorClass : "", showError : false},
+            detail : { errorClass : "", showError : false},
+            capacity : { errorClass : "", showError : false},
+            longitude : { errorClass : "", showError : false},
+            latitude : { errorClass : "", showError : false},
+            isValid : false
+        };
+
+        $scope.saveNewMedCenter = function(){
+
+            $scope.newMedCenterModel.processing = true;
+
+            $scope.clearValidationErrors();
+            $scope.validateModel();
+            if($scope.validation.isValid)
+            {
+                var object = {
+
+                    name:$scope.newMedCenterModel.name ,
+                    locationLat: $scope.newMedCenterModel.latitude,
+                    locationLong: $scope.newMedCenterModel.longitude,
+                    detail: $scope.newMedCenterModel.detail,
+                    countryId: $scope.newMedCenterModel.countryId,
+                    provinceId: $scope.newMedCenterModel.provinceId,
+                    capacity: $scope.newMedCenterModel.capacity,
+                    centerType: $scope.newMedCenterModel.centerType
+                };
+                $scope.addMedCenterService.addNewCenter(object).then(function(){
+
+                    $scope.newMedCenterModel.processing = false;
+
+                    $scope.newMedCenterModel.resetModel();
+
+                    if($scope.markersLoader != null)
+                        $scope.markersLoader.notify(null);
+
+                }, function(erroMsg){ alert(errMsg);$scope.newMedCenterModel.processing = false;} );
+            }
+            else
+            {
+                $scope.newMedCenterModel.processing = false;
+            }
+        };
+
+        $scope.cancelNewMedCenter = function(){
+            $scope.newMedCenterModel.resetModel();
+            $scope.clearValidationErrors();
+            $scope.newMedCenterModel.formOpenned = false;
+        };
+
+        $scope.newMedCenterModel.resetModel = function(){
+
+            $scope.newMedCenterModel.name = null;
+            $scope.newMedCenterModel.capacity = null;
+            $scope.newMedCenterModel.centerType = null;
+            $scope.newMedCenterModel.country = null;
+            $scope.newMedCenterModel.latitude = null;
+            $scope.newMedCenterModel.longitude = null;
+            $scope.newMedCenterModel.province = null;
+            $scope.newMedCenterModel.detail = null;
+        };
+
+        $scope.validateModel = function(){
+            $scope.validation.isValid = true;
+
+            if($scope.newMedCenterModel.name == null)
+            {
+                $scope.invalidateElement($scope.validation.name)
+                $scope.validation.isValid = false;
+            }
+            if($scope.newMedCenterModel.capacity  == null || ($scope.newMedCenterModel.capacity < 1))
+            {
+                $scope.invalidateElement($scope.validation.capacity)
+                $scope.validation.isValid = false;
+            }
+            if($scope.newMedCenterModel.centerType == null)
+            {
+                $scope.invalidateElement($scope.validation.centerType)
+                $scope.validation.isValid = false;
+            }
+            if($scope.newMedCenterModel.country == null)
+            {
+                $scope.invalidateElement($scope.validation.country)
+                $scope.validation.isValid = false;
+            }
+            if($scope.newMedCenterModel.latitude == null)
+            {
+                $scope.invalidateElement($scope.validation.latitude)
+                $scope.validation.isValid = false;
+            }
+            if($scope.newMedCenterModel.longitude == null)
+            {
+                $scope.invalidateElement($scope.validation.longitude)
+                $scope.validation.isValid = false;
+            }
+            if($scope.newMedCenterModel.province == null)
+            {
+                $scope.invalidateElement($scope.validation.province)
+                $scope.validation.isValid = false;
+            }
+            if($scope.newMedCenterModel.detail == null)
+            {
+                $scope.invalidateElement($scope.validation.detail)
+                $scope.validation.isValid = false;
+            }
+        };
+
+        $scope.invalidateElement = function(valEleRef)
+        {
+            valEleRef.errorClass = $scope.validation.errClass;
+            valEleRef.showError = true;
+        }
+
+        $scope.clearValidationErrors = function(){
+            $scope.validation.name.errorClass = "";
+            $scope.validation.name.showError = false;
+
+            $scope.validation.capacity.errorClass = "";
+            $scope.validation.capacity.showError = false;
+
+            $scope.validation.centerType.errorClass = "";
+            $scope.validation.centerType.showError = false;
+
+            $scope.validation.longitude.errorClass =  "";
+            $scope.validation.longitude.showError = false;
+
+            $scope.validation.latitude.errorClass = "";
+            $scope.validation.latitude.showError = false;
+
+            $scope.validation.province.errorClass =  "";
+            $scope.validation.province.showError = false;
+
+            $scope.validation.country.errorClass =  "";
+            $scope.validation.country.showError = false;
+
+            $scope.validation.detail.errorClass = "";
+            $scope.validation.detail.showError = false;
+        };
+
+        $scope.loadExistingMedCenters();
+
+
+    }]);
+
+appControllers.controller('addCaseController', ['$scope', '$routeParams', '$location', 'reportCaseService','regionService', '$q', '$timeout', '$window', '$interval',
+    function ($scope, $routeParams, $location, reportCaseService, regionService, $q, $timeout, $window, $interval) {
+
+        $scope.caseService = reportCaseService;
+        $scope.regionService = regionService;
+        $scope.$routeParams = $routeParams;
+        $scope.filterModel = null;
+        $scope.processing = false;
+        $scope.currentMasterSelection = null;
+
+        $scope.caseTypes = [];
+
+        $scope.cases = [];
+
+        $scope.markers = [];
+
+        /***************** Master List********************************/
+        $scope.filterSelected = function(val){
+            $scope.filterModel = val;
+        };
+
+        $scope.masterItemSelected = function(item){
+            $scope.processing = true;
+
+            var arrLength = $scope.cases.length;
+
+            for(var i = 0; i < arrLength; i++)
+            {
+                $scope.cases[i].clClass = null;
+
+                if($scope.cases[i] == item)
+                {
+                    $scope.cases[i].clClass = "masterListAnchor";
+                    $scope.currentMasterSelection = $scope.cases[i];
+                }
+            }
+
+            $scope.processing = true;
+        };
+
+        $scope.initMod = function(){
+            $scope.caseService.loadCaseStatus().then(function(caseTypesData){
+
+                var caseTypesDataLength = caseTypesData.length;
+
+                $scope.caseTypes.push({id: null, name:"All"});
+
+                for (var i = 0; i < caseTypesDataLength; i++)
+                {
+                    $scope.caseTypes.push({id: caseTypesData[i].id, name:caseTypesData[i].label});
+                }
+                caseTypesData = null;
+
+                $scope.caseService.loadCases().then(function(casesData){
+
+
+                   /*
+                    initiallyDetected:{type: Date},
+                    dateConfirmed:{type: Date},
+
+                    */
+
+                    var casesDataLength = casesData.length;
+
+                    for(var i = 0; i < casesDataLength; i++)
+                    {
+                        $scope.cases.push(
+                            {
+                                id:casesData[i].id,
+                                name: "testdf" + casesData[i].id ,
+                                date: casesData[i].initiallyReported,
+                                caseType: casesData[i].diseaseTypeId,
+                                caseStatus: casesData[i].caseStatusId,
+                                synop: casesData[i].description,
+                                clClass: null
+                            }
+                        );
+                        $scope.markers.push(
+                            {
+                                id: casesData[i].id,
+                                lat:casesData[i].locationLat,
+                                long:casesData[i].locationLong
+                            }
+                        );
+                    }
+                    casesData = null;
+
+                }, function(msg){
+                    $scope.showNotification("Error loading cases ....");
+                });
+
+            },function(msg){
+                $scope.showNotification("Error loading case status ....");
+            })
+        };
+
+
 }]);
 
-appControllers.controller('reportcaseController', ['$scope', '$routeParams', '$location', 'reportCaseService', function ($scope, $routeParams, $location, reportCaseService) {
-    debugger;
-    $scope.reportCaseService = reportCaseService;
-    $scope.$routeParams = $routeParams;
-}]);
+appControllers.controller('reportcaseController', ['$scope', '$routeParams', '$location', 'reportCaseService','regionService', '$q', '$timeout', '$window', '$interval',
+    function ($scope, $routeParams, $location, reportCaseService, regionService, $q, $timeout, $window, $interval) {
+        debugger;
+        $scope.reportCaseService = reportCaseService;
+        $scope.regionService = regionService;
+        $scope.$routeParams = $routeParams;
 
-appControllers.controller('addCaseController', ['$scope', '$routeParams', '$location', 'addCaseService', function ($scope, $routeParams, $location, addCaseService) {
-     debugger;
-    $scope.addCaseService = addCaseService;
-    $scope.$routeParams = $routeParams;
-}]);
+        $scope.viewUrl = "views/caseReport/default.html";
+        $scope.thankUmessage = $scope.saveMessage = "Mercie for entering such critical information!  Our teams of scientist and technicians will cater to the case as soon as possible";
+        $scope.cancelMessage = "Still want to provide us this essential information? please, click the button below.";
+
+        //$scope.countries = null;
+        $scope.countriesTimeoutCancelToken = null;
+        $scope.countriesUpdateTimeoutCancelToken = null;
+        $scope.countriesPromese = null;
+        $scope.getMap = function (parentEntity) {
+
+            var countriesPromese = $q.defer();
+
+            var localCache = [];
+
+            $scope.regionService.getCountries().then(
+                function (data) {
+
+                    data[0].getID = $scope.mapGetID;
+                    localCache = data;
+
+                    $scope.regionService.getAllProvinces().then(
+                        function (data) {
+
+                            data[0].getID = $scope.mapGetID;
+
+                            var arrLength = data[0].objects.length;
+
+                            for (var i = 0; i < arrLength; i++) {
+                                localCache[0].objects.push(data[0].objects[i])
+                            }
+                            countriesPromese.resolve(localCache);
+
+                            localCache = null;
+                        }
+                    );
+                }
+            );
+
+
+            return countriesPromese.promise;
+        }
+        $scope.countriesClass = "countriesClass";
+        $scope.caseTypes = [];
+
+        $scope.latLongPromise = null;
+
+        $scope.getMapUpdate = function () {
+            if ($scope.countriesPromese == null)
+                $scope.countriesPromese = $q.defer();
+
+            return $scope.countriesPromese.promise;
+        }
+
+        $scope.mapGetID = function (node) {
+            if ((node != null && node != undefined) && (node.properties != undefined)
+                && (node.properties.id != undefined) && (node.properties.mapLevel != undefined)) {
+                node.id = node.properties.id;
+                return node.id;
+            }
+        }
+
+        $scope.processLatLong = function(latLong, node, ObjRecordMarkerLocation){
+
+            ObjRecordMarkerLocation.recordMarkerLocation = false;
+
+            if ((node != null && node != undefined) && (node.properties != undefined)
+                && (node.properties.mapLevel != undefined) && (node.properties.mapLevel != "country"))
+            {
+                $scope.reportViewModel.model.country = node.properties.countryId;
+                $scope.reportViewModel.model.province = node.properties.id;
+                ObjRecordMarkerLocation.recordMarkerLocation = true;
+            }
+
+            return false;
+
+        };
+
+        $scope.getLeafletLatLongCoord = function(lat, long){
+
+            $scope.reportViewModel.model.latitude = lat;
+            $scope.reportViewModel.model.longitude = long;
+        };
+
+        $scope.setLeafletLatLongCoord = function(){
+
+            if($scope.latLongPromise == null)
+                $scope.latLongPromise = $q.defer();
+            return $scope.latLongPromise.promise;
+        };
+
+        $scope.btnGetCurrentGeoLocation = function()
+        {
+            if($scope.latLongPromise != null)
+            {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position){
+                        var latlong = [] ;
+                        latlong[0] = $scope.reportViewModel.model.latitude = position.coords.latitude;
+                        latlong[1] = $scope.reportViewModel.model.longitude = position.coords.longitude;
+
+                        $scope.latLongPromise.notify(latlong);
+
+                        latlong = null;
+                    });
+                }
+            }
+        }
+
+
+        $scope.loadCaseTypes = function () {
+            $scope.reportCaseService.getCaseTypes().then(function(data){
+                $scope.caseTypes = data;
+            });
+
+        };
+
+        $scope.gotoFormEntryView = function(){
+            $scope.reportViewModel.resetModel();
+            $scope.viewUrl = "views/caseReport/default.html";
+        }
+
+        /****************************** model*/
+
+        $scope.reportViewModel = {};
+
+        $scope.reportViewModel.thankYouViewMessage = "";
+        $scope.reportViewModel.model = {
+            infection: null,
+            initiallyReported: null,
+            initiallyDetected: null,
+            country: null,
+            province: null,
+            latitude: null,
+            longitude: null,
+            synop: null
+        }
+        $scope.reportViewModel.buttonsDivClass = "divBtn";
+
+
+        $scope.validation = {
+            errClass : "has-error has-feedback",
+            suspectedCase : { errorClass : "", showError : false}, // from selection dropdown
+            dateDetected : { errorClass : "", showError : false},
+            synop : { errorClass : "", showError : false},
+            longitude : { errorClass : "", showError : false},
+            latitude : { errorClass : "", showError : false},
+            isValid : false
+        };
+
+/*************** todo: validate page change with viewUrl. keep testing later */
+        $scope.reportViewModel.saveReport = function(){
+
+            $scope.clearValidationErrors();
+            $scope.validateModel();
+            if($scope.validation.isValid)
+            {
+                var today = new Date();
+                var object = {
+                    diseaseTypeId: $scope.reportViewModel.model.infection,
+                    locationLat: $scope.reportViewModel.model.latitude,
+                    locationLong:$scope.reportViewModel.model.longitude,
+                    initiallyReported : today ,//get that from today date time
+                    initiallyDetected : $scope.reportViewModel.model.initiallyDetected, //get that from control
+                    countryId: $scope.reportViewModel.model.country,
+                    provinceId:$scope.reportViewModel.model.province, //get both countryId and provinceid from the process lonlat coordinate above
+                    description: $scope.reportViewModel.model.synop
+                };
+                $scope.reportCaseService.reportSuspiciousCase(object).then(function(rsp){
+                    $scope.thankUmessage = $scope.saveMessage;
+                    $scope.viewUrl = "views/caseReport/thankyou.html";
+                } );
+            }
+        };
+
+        $scope.reportViewModel.cancelReport = function(){
+
+            $scope.thankUmessage = $scope.cancelMessage;
+
+            $scope.reportViewModel.resetModel();
+            $scope.viewUrl = "views/caseReport/thankyou.html";
+
+
+        };
+
+        $scope.reportViewModel.resetModel = function(){
+            $scope.reportViewModel.model.infection = null;
+            $scope.reportViewModel.model.initiallyDetected = null;
+            $scope.reportViewModel.model.country = null;
+            $scope.reportViewModel.model.province = null;
+            $scope.reportViewModel.model.latitude = null;
+            $scope.reportViewModel.model.longitude = null;
+            $scope.reportViewModel.model.synop = null;
+        };
+
+        $scope.reportViewModel.resetValidation = function(){
+            $scope.validation.suspectedCase.errorClass = "";
+
+        };
+
+        $scope.validateModel = function(){
+            $scope.validation.isValid = true;
+
+            if($scope.reportViewModel.model.latitude == null)
+            {
+                $scope.invalidateElement($scope.validation.latitude)
+                $scope.validation.isValid = false;
+            }
+            if($scope.reportViewModel.model.longitude == null)
+            {
+                $scope.invalidateElement($scope.validation.longitude)
+                $scope.validation.isValid = false;
+            }
+            if($scope.reportViewModel.model.infection == null)
+            {
+                $scope.invalidateElement($scope.validation.suspectedCase)
+                $scope.validation.isValid = false;
+            }
+            if($scope.reportViewModel.model.synop == null)
+            {
+                $scope.invalidateElement($scope.validation.synop)
+                $scope.validation.isValid = false;
+            }
+            if($scope.reportViewModel.model.initiallyDetected == null)
+            {
+                $scope.invalidateElement($scope.validation.dateDetected)
+                $scope.validation.isValid = false;
+            }
+        };
+
+        $scope.invalidateElement = function(valEleRef)
+        {
+            valEleRef.errorClass = $scope.validation.errClass;
+            valEleRef.showError = true;
+        }
+
+        $scope.clearValidationErrors = function(){
+            $scope.validation.suspectedCase.errorClass = "";
+            $scope.validation.suspectedCase.showError = false;
+
+            $scope.validation.dateDetected.errorClass = "";
+            $scope.validation.dateDetected.showError = false;
+
+            $scope.validation.synop.errorClass = "";
+            $scope.validation.synop.showError = false;
+
+            $scope.validation.longitude.errorClass =  "";
+            $scope.validation.longitude.showError = false;
+
+            $scope.validation.latitude.errorClass = "";
+            $scope.validation.latitude.showError = false;
+        };
+
+        /************** date control*/
+
+        $scope.minDate = new Date();
+        $scope.maxDate = new Date();
+        $scope.dateControlOpened = false;
+
+        /*$scope.openDateControl = function($event) {
+
+            $scope.dateControlOpened = true;
+            $scope.opened = true;
+
+            $event.preventDefault();
+            $event.stopPropagation();
+
+
+        };*/
+
+        $scope.dateOptions = {
+            formatYear: 'yy',
+            startingDay: 1
+        };
+
+        $scope.dateFormats = ['dd-MMMM-yyyy', 'yyyy/MM/dd', 'dd.MM.yyyy', 'shortDate'];
+        $scope.dateFormat = $scope.dateFormats[0];
+
+        $scope.configureMinMaxDate = function(){
+
+            $scope.maxDate.setDate($scope.maxDate.getDate() + 2);
+
+            $scope.minDate.setDate($scope.minDate.getDate() - 30);
+
+        };
+
+        $scope.configureMinMaxDate();
+
+        $scope.loadCaseTypes();
+
+    }]);
 
 appControllers.controller('regionController', ['$scope', '$routeParams', '$location', 'regionService', '$q', '$timeout', '$window', '$interval',
     function ($scope, $routeParams, $location, regionService , $q, $timeout, $window, $interval) {
@@ -716,12 +1547,47 @@ appControllers.controller('regionController', ['$scope', '$routeParams', '$locat
 
     }]);
 
-appControllers.controller('infoController', ['$scope', '$routeParams', '$location', 'infomationService', function ($scope, $routeParams, $location, infomationService) {
-     //debugger;
+appControllers.controller('infoController', ['$scope', '$routeParams', '$location', 'infomationService','regionService', function ($scope, $routeParams, $location, infomationService, regionService) {
+
+    $scope.showNotification('loading the Information Hotlines module ... ' ) ;
     $scope.infomationService = infomationService;
     $scope.$routeParams = $routeParams;
-    $scope.countryFilter= "";
-    $scope.infos = [];
+    $scope.regionService = regionService;
+
+    $scope.infos = [
+        {
+            countryName: "encore Moi",
+            provinces:[
+                {
+                    provinceName: "group1",
+                    contactInfos: [
+                        { contact: "###", synop:" blahahhha", clClass: null}
+                    ]
+                },
+                {
+                    provinceName: "group2",
+                    contactInfos: [
+                        { contact: "###", synop:" blahahhha", clClass: null}
+                    ]
+                }
+            ]
+        },
+        {
+            countryName: "encore Moi",
+            provinces:[
+                {
+                    provinceName: "group1",
+                    contactInfos: [
+                        { contact: "###", synop:" blahahhha", clClass: null},
+                        { contact: "###", synop:" blahahhha", clClass: null},
+                        { contact: "###", synop:" blahahhha", clClass: null}
+                    ]
+                }
+            ]
+        }
+    ];
+
+
     $scope.view = "Listing ...";
     $scope.viewModel = "list";
     $scope.viewUrl = "views/information/list.html";
@@ -732,16 +1598,21 @@ appControllers.controller('infoController', ['$scope', '$routeParams', '$locatio
         country: "",
         isValid:  false,
         description: "",
-        contactInfo: ""
+        contactInfo: "",
+        currentCountryId: null,
+        currentProvinceId: null
     };
+    $scope.countries =[];
+
+    $scope.provinces = [];
 
     $scope.newModelWatcher = {
         province : "",
         country: ""
     };
     $scope.newModel.titleWatchers = null;
-    $scope.validation = {};
 
+    $scope.validation = {};
     $scope.validation.description = {
         errorClass: "",
         showError: false
@@ -759,18 +1630,6 @@ appControllers.controller('infoController', ['$scope', '$routeParams', '$locatio
         showError: false
     };
 
-
-    $scope.showNotification('loading the Information Hotlines module ... ' ) ;
-
-    var prmise = $scope.infomationService.FetchInfos().then(function(data){
-
-        },function(msg){
-            $scope.showNotification(' Error loading data from infomationService.FetchInfos ' + msg , "error") ; //somw how inclue error notification
-        },function(dataUpdate){
-
-        }
-    );
-
     $scope.$watch("viewModel", function(newVal, oldVal){
         if(newVal != oldVal)
         {
@@ -782,48 +1641,12 @@ appControllers.controller('infoController', ['$scope', '$routeParams', '$locatio
                     break;
                 case "add":
 
-                    if($scope.newModel.titleWatchers == null)
-                    {
-                        $scope.newModel.titleWatchers = $scope.$watch(function(){
-                            //debugger;
-
-                            if($scope.newModelWatcher.province != $scope.newModel.province)
-                            {
-                                //oldVal = $scope.newModelWatcher.province;
-                                $scope.newModelWatcher.province = $scope.newModel.province;
-                                return  {
-                                    province : "",
-                                    //province : $scope.newModel.province,
-                                    country: $scope.newModelWatcher.country
-                                };
-                            }
-
-                            if($scope.newModelWatcher.country != $scope.newModel.country) {
-                                $scope.newModelWatcher.country = $scope.newModel.country;
-
-                                return  {
-                                    province : $scope.newModel.province,
-                                    //country: $scope.newModelWatcher.country
-                                    country: ""
-                                };
-
-                            }
-                            return $scope.newModelWatcher;
-
-                        }, function(newVal, oldVal){
-                            debugger;
-                            if(newVal.country != oldVal.country || newVal.province != oldVal.province)
-                            {
-                                $scope.newModel.provinceTitle = $scope.newModel.province.length > 0 ? $scope.newModel.province : "Province";
-                                $scope.newModel.countryTitle = $scope.newModel.country.length > 0 ? $scope.newModel.country : "Country";
-                            }
-
-                        });
-                    }
                     $scope.view = "Add new information."
                     $scope.viewUrl = "views/information/add.html";
+
                     break;
                 case "map": $scope.view = "Map View";
+                    $scope.viewUrl = "views/information/map.html";
                     break;
                 default: break;
             }
@@ -831,18 +1654,27 @@ appControllers.controller('infoController', ['$scope', '$routeParams', '$locatio
     });
 
     $scope.Save = function(){
+        $scope.AnimHideNotification();
 
         $scope.clearValidationErrors();
         $scope.validateNewModel();
 
-        var desc = $scope.newModel.description ;
-        var cntinfo = $scope.newModel.contactInfo ;
-        var cntry = $scope.newModel.country ;
-        var prvnce = $scope.newModel.province;
-
         if($scope.newModel.isValid == true)
         {
-          //submit form lol!
+            var nwModel = {
+                description: $scope.newModel.description,
+                contact: $scope.newModel.contactInfo,
+                countryId: $scope.newModel.currentCountryId,
+                provinceId:$scope.newModel.currentProvinceId
+            }
+
+            $scope.infomationService.InsertInfos(nwModel).then(function(){
+                $scope.showSaveModal("", 'Information Save. ', false, true);
+                $scope.cancel();
+            }, function(msg){
+                $scope.showNotification(' Error Saving the Information . ' ) ;
+            });
+            nwModel = null;
         }
     }
 
@@ -872,13 +1704,13 @@ appControllers.controller('infoController', ['$scope', '$routeParams', '$locatio
             $scope.validation.contactInfo.errorClass = "has-error has-feedback";
             $scope.validation.contactInfo.showError = true;
         }
-        if( $scope.newModel.country.length < 1)
+        if( $scope.newModel.country == null || $scope.newModel.country.length < 1)
         {
             $scope.newModel.isValid = false;
             $scope.validation.country.errorClass = "has-error has-feedback";
             $scope.validation.country.showError = true;
         }
-        if( $scope.newModel.province.length < 1)
+        if( $scope.newModel.province == null || $scope.newModel.province.length < 1)
         {
             $scope.newModel.isValid = false;
             $scope.validation.province.errorClass = "has-error has-feedback";
@@ -896,6 +1728,71 @@ appControllers.controller('infoController', ['$scope', '$routeParams', '$locatio
         $scope.validation.province = {errorClass:"", showError:""};
     }
 
-}]);
 
-///TODO: Add country and province views and controllers, add geometry type to fields: "polygon" or "multipolygon"*/
+    $scope.showNotification( 'done loading Information Hotlines module');
+    //$scope.AnimHideNotification();
+
+    $scope.loadProvinces= function(){
+        $scope.showNotification( "loading Information Hotlines module's provinces");
+        $scope.regionService.getAllProvinces().then(function(arrData){
+
+            var provinces = arrData[0].objects;
+            var provincesLength = provinces.length;
+
+            for(var i = 0; i < provincesLength ; i++)
+            {
+                $scope.provinces.push({id: provinces[i].properties.id  , name: provinces[i].properties.label, countryId: provinces[i].properties.countryId});
+            }
+            provinces = null;
+            arrData = null;
+            $scope.AnimHideNotification();
+
+        });
+
+    };
+    $scope.loadCountries = function() {
+
+        $scope.showNotification("loading Information Hotlines module's countries");
+        $scope.regionService.getCountries().then(function (arrData) {
+
+            var contries = arrData[0].objects;
+            var contriesLength = contries.length;
+
+            for (var i = 0; i < contriesLength; i++) {
+                $scope.countries.push({id: contries[i].properties.id, name: contries[i].properties.label});
+            }
+            contries = null;
+            arrData = null;
+            $scope.AnimHideNotification();
+
+        });
+    };
+
+    $scope.prevContactInfoSeletedItem = null;
+    $scope.contactInfoSelected = function(item)
+    {
+        if($scope.prevContactInfoSeletedItem != null)
+            $scope.prevContactInfoSeletedItem.clClass = null;
+
+        $scope.prevContactInfoSeletedItem = item;
+        $scope.prevContactInfoSeletedItem.clClass = "active";
+
+    };
+
+    $scope.LoadInfos = function(){
+        //$scope.infos = [];
+
+        $scope.infomationService.fetchInfos().then(function(data){
+            $scope.infos = data;
+        },function(msg){
+            $scope.showNotification( 'Error loading Information Hotlines ...' + msg);
+        });
+    };
+
+    $scope.loadCountries();
+    $scope.loadProvinces();
+    $scope.LoadInfos();
+
+}
+]);
+

@@ -58,6 +58,10 @@ angular.module('oz.d3Map',[])
       attrs.textFontSize = attrs.textFontSize || '8px';
       attrs.textFont = attrs.textFont || 'sans-serif';
       attrs.highlightOnMouseOver = attrs.highlightOnMouseOver || false;
+
+      attrs.disabledZooming = attrs.disabledZooming || false;
+      attrs.generateLeaflet = attrs.generateLeaflet || false;
+      attrs.leafletEnableMarker = attrs.leafletEnableMarker || false;
     }
 
     return {
@@ -87,7 +91,17 @@ angular.module('oz.d3Map',[])
         divClass:       '@',
         highlightOnMouseOver: '@',
         getMapUpdater:     '&',
-        processCoord:   '&'
+        processCoord:   '&',
+        disabledZooming: '@',
+        generateLeaflet: '@',
+        leafletContainerId: '@',
+        leafletEnableMarker: '@',
+        setLeafletLatLongCoord: '&',
+        getLeafletLatLongCoordUpdater: '&',
+        getMapMarkerUpdater:  '&',
+        getMarkerIcon: '&',
+        mapMarkerNotifier: '&',
+        getMapMarkers: '&'
       },
         controller: function($scope){
 
@@ -95,6 +109,14 @@ angular.module('oz.d3Map',[])
                 $scope.timeoutToken, $scope.tip = null;
             $scope.stack = [];
             $scope.sizer = new D3ChartSizer();
+            $scope.map = null;
+
+            $scope.skipLeafletInitialized = false;
+
+            $scope.leafletMarker = null;
+            $scope.leafletMarkers = null;
+            $scope.recordMarkerLocation = false;
+
 
             var hydratedScale = 0;
             var hydratedTranslationCoord = [];
@@ -146,25 +168,49 @@ angular.module('oz.d3Map',[])
               return false;
             }
 
-              if($scope.zoomBvr !== undefined) {
+              $scope.hightlightOnMouseOver = attrs.highlightOnMouseOver;
 
-                  $scope.zoomBvr = d3.behavior.zoom(g)
-                      .scaleExtent([.2, 25])
-                      .on("zoom", null)
-                      .on("zoomstart", null);
+              if($scope.generateLeaflet)
+              {
+                  $scope.map = L.map($scope.leafletContainerId).setView([15.884734, -0.241699], 4);
+                 var mapLink =
+                      '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+                  L.tileLayer(
+                      'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          attribution: '&copy; ' + mapLink + ' Contributors',
+                          maxZoom: 13,
+                          minZoom: 3
+                      }).addTo($scope.map);
 
 
+                  $scope.svg = d3.select($scope.map.getPanes().overlayPane).append("svg");
+                  $scope.g = $scope.svg.append("g"); //.attr("class", "leaflet-zoom-hide");
 
+                  $scope.sizer.setSizes($scope, $("#" + $scope.leafletContainerId));
+                  var originalScale = $scope.scale;
+
+                  drawMap();
+              }
+              else
+              {
+
+                  $scope.svg = d3.select(angular.element($element)[0]).append('svg');
+                  $scope.g = $scope.svg.append('g');
+                  $scope.sizer.setSizes($scope, $element.parent());
+                  var originalScale = $scope.scale;
+
+                  if($scope.zoomBvr !== undefined) {
+
+                      $scope.zoomBvr = d3.behavior.zoom($scope.g)
+                          .scaleExtent([.2, 25])
+                          .on("zoom", null)
+                          .on("zoomstart", null);
+                  }
+
+                  drawMap();
               }
 
-              $scope.hightlightOnMouseOver = attrs.highlightOnMouseOver;
-              $scope.svg = d3.select(angular.element($element)[0]).append('svg');
-              $scope.g = $scope.svg.append('g');
-              $scope.sizer.setSizes($scope, $element.parent());
-                  var originalScale = $scope.scale;
-                  drawMap();
-
-                  if ($scope.getMapUpdater && angular.isFunction($scope.getMapUpdater)) {
+              if ($scope.getMapUpdater && angular.isFunction($scope.getMapUpdater)) {
                       try {
                           $scope.getMapUpdater().then(function () {
                               },
@@ -206,11 +252,6 @@ angular.module('oz.d3Map',[])
                       }
                   }
 
-
-
-
-
-
             function drawMap() {
                 $scope.stack = [];
               if (!$scope.widthScale && $scope.mapWidth) {
@@ -219,27 +260,37 @@ angular.module('oz.d3Map',[])
               if (!$scope.heightScale && $scope.mapHeight) {
                 $scope.heightScale = $scope.height/$scope.mapHeight;
               }
-              $scope.scale = originalScale*$scope.width;
-                $scope.actualWidth = $scope.width;
-                $scope.actualHeight = $scope.height;
-                $scope.projection = d3.geo.mercator()
-                .scale($scope.scale)
-                ///.translate([width/$scope.widthScale, height/$scope.heightScale]);
-                .translate([$scope.actualWidth/2, $scope.actualHeight]);
 
-                $scope.svg.attr('preserveAspectRatio', 'xMidYMid')
-                .attr('viewBox', Math.round(($scope.leftOffset/100)* $scope.actualWidth) + ' ' + Math.round(($scope.topOffset/100)* $scope.height) + ' ' + Math.round($scope.actualWidth*(1 - ($scope.rightOffset/100))) + ' ' + Math.round($scope.actualHeight*(1 - ($scope.bottomOffset/100))))
-                .attr('width', $scope.actualWidth)
-                .attr('height', $scope.actualHeight);
+                if($scope.generateLeaflet)
+                {
+                    $scope.projection = d3.geo.transform({point: projectPoint});
+                    $scope.path = d3.geo.path().projection($scope.projection);
+                }
+                else {
+                    $scope.scale = originalScale * $scope.width;
+                    $scope.actualWidth = $scope.width;
+                    $scope.actualHeight = $scope.height;
+                    $scope.projection = d3.geo.mercator()
+                        .scale($scope.scale)
+                        ///.translate([width/$scope.widthScale, height/$scope.heightScale]);
+                        .translate([$scope.actualWidth / 2, $scope.actualHeight]);
 
-                $scope.path = d3.geo.path().projection($scope.projection);
+                    $scope.svg.attr('preserveAspectRatio', 'xMidYMid')
+                        .attr('viewBox', Math.round(($scope.leftOffset / 100) * $scope.actualWidth) + ' ' + Math.round(($scope.topOffset / 100) * $scope.height) + ' ' + Math.round($scope.actualWidth * (1 - ($scope.rightOffset / 100))) + ' ' + Math.round($scope.actualHeight * (1 - ($scope.bottomOffset / 100))))
+                        .attr('width', $scope.actualWidth)
+                        .attr('height', $scope.actualHeight);
+
+                    $scope.path = d3.geo.path().projection($scope.projection);
+                }
 
                 /*************************************************/
                // zoomBvr = null;
-                $scope.zoomBvr = d3.behavior.zoom($scope.g)
-                    .scaleExtent([.2, 25])
-                    .on("zoom", zoomed)
-                    .on("zoomstart", zoomStarted);
+                if(!$scope.disabledZooming) {
+                    $scope.zoomBvr = d3.behavior.zoom($scope.g)
+                        .scaleExtent([.2, 25])
+                        .on("zoom", zoomed)
+                        .on("zoomstart", zoomStarted);
+                }
 
               if (!$scope.objects) {
                 $scope.getMap(null).then(function (newObjects) {
@@ -251,8 +302,11 @@ angular.module('oz.d3Map',[])
                     $scope.g.selectAll('g').remove();
                   addObjects($scope.objects);
 
-                    $scope.svg.call($scope.zoomBvr) // delete this line to disable free zooming
-                        .call($scope.zoomBvr.event);
+
+                    if(!$scope.disabledZooming) {
+                        $scope.svg.call($scope.zoomBvr) // delete this line to disable free zooming
+                            .call($scope.zoomBvr.event);
+                    }
 
                     $scope.tip = null;
 
@@ -273,10 +327,6 @@ angular.module('oz.d3Map',[])
                   $scope.g.selectAll('g').remove();
                 addObjects($scope.objects);
               }
-
-                /*svg
-                    .call(zoom) // delete this line to disable free zooming
-                    .call(zoom.event);*/
             }
 
             function addObjects(objects) {
@@ -379,11 +429,11 @@ angular.module('oz.d3Map',[])
                     areaClass = areaClass + " "+ $scope.activeClass;
                   }
 
-                    //objects = objects.objects;
+                    $scope.dataObjects = objects;
                   nodes = nodesParent
                     .attr('id', 'level' + parseInt($scope.stack.length + 1))
                     .selectAll("path")
-                    .data(objects)
+                    .data($scope.dataObjects)
                     .enter()
                     .append("path")
                     .attr("id", getID)
@@ -402,9 +452,30 @@ angular.module('oz.d3Map',[])
                           }
                           else
                           {
-                              var longLat = $scope.projection.invert(d3.mouse(this));
-                              var proceed = $scope.processCoord()(longLat, d);
+                              var longLat = null;
+                              if(!$scope.generateLeaflet)
+                                longLat = $scope.projection.invert(d3.mouse(this));
+                              var proceed = true;
 
+                              if($scope.generateLeaflet)
+                              {
+                                  if(angular.isDefined($scope.processCoord()) && angular.isFunction($scope.processCoord()) )
+                                  {
+                                      var temp = {
+                                          recordMarkerLocation : $scope.recordMarkerLocation
+                                      };
+
+                                      $scope.processCoord()(longLat, d, temp);
+
+                                      $scope.recordMarkerLocation = temp.recordMarkerLocation;
+                                      temp = null;
+                                  }
+                              }
+                              else
+                              {
+                                  proceed = (angular.isDefined($scope.processCoord()) && angular.isFunction($scope.processCoord()) )
+                                      ? $scope.processCoord()(longLat, d): true;
+                              }
                               if(proceed == false)
                                 return;
 
@@ -417,40 +488,192 @@ angular.module('oz.d3Map',[])
 
                     if($scope.hightlightOnMouseOver)
                     {
-                        nodes.on("mouseover", function(d) {
+                        nodes.on("mouseover", function(d, idx) {
 
 
+                            $scope.nodeIndex = idx;
                             var parentNode = this.parentNode;
                             parentNode.removeChild(this);
                             parentNode.appendChild(this);
-
-
                                 d.context = this.getBoundingClientRect();
 
                             $scope.tip.offset(  [this.getBBox().height / 2, 0] );
-
                             $scope.tip.show(d);
+                            parentNode = null;
                         });
 
                         nodes.on("mouseout", function(d) {
                             $scope.tip.hide(d);
+
+                            var parentNode = this.parentNode;
+                            parentNode.removeChild(this);
+
+                            var nodeAtIdx = parentNode.childNodes[$scope.nodeIndex];
+
+                            parentNode.insertBefore(this, nodeAtIdx);
+                            nodeAtIdx = parentNode = null;
+
                         });
                     }
 
+
+                  if(!$scope.generateLeaflet)
                       $scope.timeoutToken = $timeout(function () {
                               adjustTranslation();
                               $timeout.cancel($scope.timeoutToken);
                          $scope.timeoutToken = null;
-                          }, 5);
+                      }, 5);
               }
               if (angular.isFunction(nodeHandler)) {
                 nodeHandler(nodes, nodesParent, projection);
               }
 
+                if(!$scope.skipLeafletInitialized)
+              if($scope.generateLeaflet)
+              {
+                  $scope.map.on("viewreset", reset);
+
+                  $scope.map.on('zoomstart', function(e) {
+                      console.log(e); console.log(this); console.log($scope.map);
+                      var toRemove = $scope.g.selectAll('#level' + ($scope.stack.length + 1));
+                      if (toRemove) {
+                          toRemove.remove();
+                      }
+                  });
+
+                  if($scope.leafletEnableMarker)
+                  {
+                      $scope.map.on('click', function(e) {
+
+                          if($scope.recordMarkerLocation) {
+                              var markerLocation = e.latlng;
+
+                              if ($scope.leafletMarker == null) {
+
+                                  if((angular.isDefined($scope.getMarkerIcon)) && (angular.isFunction($scope.getMarkerIcon))) {
+
+                                      var icon = $scope.getMarkerIcon()();
+                                      $scope.leafletMarker = L.marker()
+                                          .setIcon(icon)
+                                          .setLatLng(markerLocation)
+                                          .addTo($scope.map);
+                                  }
+                                  else
+                                  {
+                                      $scope.leafletMarker = L.marker()
+                                          .setLatLng(markerLocation)
+                                          .addTo($scope.map);
+                                  }
+                              }
+                              else {
+                                  $scope.leafletMarker.setLatLng(markerLocation);
+                                  $scope.leafletMarker.update();
+                              }
+
+                              if((angular.isDefined($scope.setLeafletLatLongCoord())) && (angular.isFunction($scope.setLeafletLatLongCoord())))
+                              {
+                                  $scope.$apply(function(){
+                                  $scope.setLeafletLatLongCoord()(markerLocation.lat, markerLocation.lng);
+                                  });
+                              }
+
+                              $scope.recordMarkerLocation = false;
+                          }
+
+                      });
+
+                      if((angular.isDefined($scope.getLeafletLatLongCoordUpdater)) && (angular.isFunction($scope.getLeafletLatLongCoordUpdater)))
+                      {
+                          $scope.getLeafletLatLongCoordUpdater().then(function(data){}, function(){}, function(latLong){
+                              //if($scope.recordMarkerLocation) {
+                                  if ($scope.leafletMarker == null) {
+
+
+                                      $scope.leafletMarker = L.marker()
+                                          .setLatLng(latLong)
+                                          .addTo($scope.map);
+
+                                  }
+                                  else {
+                                      $scope.leafletMarker.setLatLng(latLong);
+                                      $scope.leafletMarker.update();
+                                  }
+                              //}
+                          });
+                      }
+
+                      if((angular.isDefined($scope.getMapMarkerUpdater())) && (angular.isFunction($scope.getMapMarkerUpdater)))
+                      {
+                          $scope.getMapMarkerUpdater().then(function(){},function(){}, function(newIcon){
+
+                              if ($scope.leafletMarker != null)
+                              {
+                                  $scope.leafletMarker.setIcon(newIcon)
+                                  $scope.leafletMarker.update();
+                              }
+
+                          });
+                      }
+
+                      if((angular.isDefined($scope.mapMarkerNotifier())) && (angular.isFunction($scope.mapMarkerNotifier)))
+                      {
+                          $scope.mapMarkerNotifier().then(function(){},function(){}, function(notice){
+
+                              if ($scope.leafletMarkers == null)
+                              {
+                                  $scope.leafletMarkers = [];
+                              }
+
+                              $scope.getMapMarkers({mapWrapper : { map: $scope.map, markers: $scope.leafletMarkers  }});
+                                 // .then(function(){});
+
+                          });
+                      }
+                  }
+
+
+                  $scope.skipLeafletInitialized = true;
+
+                  reset();
+
+              }
             }
 
 
-            function adjustTranslation(forced){
+              function reset() {
+                  var toRemove = $scope.g.selectAll('#level' + ($scope.stack.length + 1));
+                  if (toRemove) {
+                      toRemove.remove();
+                  }
+
+                  var temp = {
+                      "type": "FeatureCollection",
+                      "features": $scope.dataObjects
+                  }
+
+                  var bounds = $scope.path.bounds(temp);
+
+                  var topLeft = bounds[0],
+                      bottomRight = bounds[1];
+
+                  $scope.svg .attr("width", bottomRight[0] - topLeft[0])
+                      .attr("height", bottomRight[1] - topLeft[1])
+                      .style("left", topLeft[0] + "px")
+                      .style("top", topLeft[1] + "px");
+
+                  $scope.g .attr("transform", "translate(" + -topLeft[0] + ","
+                  + -topLeft[1] + ")");
+
+
+
+                  $scope.sizer.setSizes($scope, $("#" + $scope.leafletContainerId));
+                  var originalScale = $scope.scale;
+
+                  drawMap();
+
+              }
+
+              function adjustTranslation(forced){
 
                   var localforced = forced || false;
                   var svgClientRect = $scope.svg.node().getBoundingClientRect();
@@ -612,6 +835,9 @@ angular.module('oz.d3Map',[])
               }
               function zoomed(d, bHydrateTranslation) {
 
+                  if($scope.disabledZooming)
+                    return;
+
                   var hydrateTranslation = bHydrateTranslation == undefined ?  true : bHydrateTranslation;
 
                   if(d == undefined || d == null)
@@ -694,6 +920,11 @@ angular.module('oz.d3Map',[])
               var x = (bounds[1][0] + bounds[0][0])/$scope.zoomXscale;
               var y = (bounds[1][1] + bounds[0][1])/$scope.zoomYscale + ($scope.actualHeight/z/6);
               return [x, y, z];
+            }
+
+            function projectPoint(x, y) {
+              var point = $scope.map.latLngToLayerPoint(new L.LatLng(y, x));
+              this.stream.point(point.x, point.y);
             }
 
             if (!$scope.resizeBind) {

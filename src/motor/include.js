@@ -68,6 +68,7 @@ function ImportJsFilesWrapper()
         "motor/services.js",
         "motor/controllers.js",
         "motor/directives.js",
+        "motor/filters.js",
         "motor/app.js"
     ]);
 }

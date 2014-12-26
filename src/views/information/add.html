@@ -1,6 +1,6 @@
 <div>
     <div class="forms">
-        <form class="form-horizontal" role="form">
+        <form class="form-horizontal" role="form" >
 
             <!-- Country-->
             <div class="form-group " ng-class="validation.country.errorClass">
@@ -13,12 +13,11 @@
                             <span class="sr-only">Split button!</span>
                         </button>
                         <ul class="dropdown-menu" role="menu">
-                            <li ng-click='newModel.country = "Ivory Coast"'>Cote D'Ivoire</li>
-                            <li ng-click='newModel.country = "Guinnee"'>Guinnee</li>
-                            <li ng-click='newModel.country = "Liberia"'>Liberia</li>
-                            <li class="divider"></li>
-                            <li ng-click='newModel.country = "Ghana"'>Ghana</li>
+
+                            <li ng-repeat-start="country in countries"  ng-click="newModel.currentCountryId = country.id; newModel.country = country.name; newModel.province = null" >{{country.name}}</li>
+                            <li ng-repeat-end class="divider" ng-if="$index + 2 == countries.length "></li>
                         </ul>
+
                     </div>
                 </div>
                 <div class="col-sm-7">
@@ -40,11 +39,8 @@
                             <span class="sr-only">Split button!</span>
                         </button>
                         <ul class="dropdown-menu" role="menu">
-                            <li ng-click='newModel.province = "Ivory Coast"'>Cote D'Ivoire</li>
-                            <li ng-click='newModel.province = "Guinnee"'>Guinnee</li>
-                            <li ng-click='newModel.province = "Liberia"'>Liberia</li>
-                            <li class="divider"></li>
-                            <li ng-click='newModel.province = "Ghana"'>Ghana</li>
+                            <li ng-repeat-start="province in provinces | exactCountryId:{countryId: newModel.currentCountryId}:'countryId' " ng-click='newModel.currentProvinceId = province.id;newModel.province = province.name'>{{province.name}}</li>
+                            <li ng-repeat-end class="divider" ng-if="$index + 2 == provinces.length "></li>
                         </ul>
                     </div>
                 </div>

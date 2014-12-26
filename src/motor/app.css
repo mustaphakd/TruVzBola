@@ -241,6 +241,33 @@
         color: #fff;
         border-radius: 5px;
     }
+
+    .form-control-feedback:before {
+        clear: left;
+        margin-left: 100%;
+        /* float: right; */
+    }
+    .spacer
+    {
+        margin-top:2px;
+        margin-bottom: 3px;
+    }
+    #leafletContainer, .leafletContainer
+    {
+        min-height: 500px;
+    }
+
+    .coqPending{
+        padding-left: 40%;
+        padding-top: 45%;
+        padding-bottom: 30%;
+        background-color: rgba(222, 223, 229, 1);
+        margin-left: -2%;
+        margin-right: -2.2%;
+        border-radius: 15px;
+        border-style: solid;
+        z-index: 5;
+    }
 }
 @media (min-width: 768px){
     .affix-content .container {
@@ -301,6 +328,30 @@
         top: 30.5px;
         right: 100px;
 
+    }
+
+    a.masterListAnchor::after /*li:hover::after, .masterList a:focus::after, .masterList a:active::after, .masterList a:visited::after  , .masterList li:focus::after, .masterList li:visited::after, .masterList li::selection::after*/ {
+        position: absolute;
+        content: "\25B6";
+        /*padding-left: 100%;*/
+        float: right;
+        /*top: -85%;
+        font-size: 70px;
+        left: 98%;*/
+        top: 1%;
+        font-size: 30px;
+        left: 99%;
+        color: #ddd;
+    }
+    .masterListAnchor /*li:hover*/{
+        background-color: #f5f5f5;
+        cursor: pointer;
+    }
+    .masterList a{
+        cursor: pointer;
+    }
+    .reducedLeftMargin{
+        margin-left: 2px;
     }
 
 
@@ -438,6 +489,10 @@
         position: absolute;
         top: 2px;
         left: 20%;
+    }
+
+    .magnifyMap{
+        min-height: 675px;!important;
     }
 
 }
