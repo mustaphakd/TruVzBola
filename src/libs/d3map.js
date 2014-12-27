@@ -62,6 +62,7 @@ angular.module('oz.d3Map',[])
       attrs.disabledZooming = attrs.disabledZooming || false;
       attrs.generateLeaflet = attrs.generateLeaflet || false;
       attrs.leafletEnableMarker = attrs.leafletEnableMarker || false;
+      attrs.skipD3Drawings = attrs.skipD3Drawings || false;
     }
 
     return {
@@ -96,12 +97,13 @@ angular.module('oz.d3Map',[])
         generateLeaflet: '@',
         leafletContainerId: '@',
         leafletEnableMarker: '@',
-        setLeafletLatLongCoord: '&',
-        getLeafletLatLongCoordUpdater: '&',
-        getMapMarkerUpdater:  '&',
-        getMarkerIcon: '&',
-        mapMarkerNotifier: '&',
-        getMapMarkers: '&'
+        setLeafletLatLongCoord: '&',   //on leaftlet click event, pass lat long coords param to a $scope method
+        getLeafletLatLongCoordUpdater: '&',     //update the current single marker position from a $scope method
+        getMapMarkerUpdater:  '&',      // update current single marker icon
+        getMarkerIcon: '&',             //gets custom marker icon for single marker on map click event
+        mapMarkerNotifier: '&',         // notify oxD3Map to load||reload markers (marker array) and then call getMapMarkers
+        getMapMarkers: '&',             //calls a scope method passing in $scope map and marker for custom up from within a $scope method
+        skipD3Drawings: '@'             // whether or not to bypass default rendering.
       },
         controller: function($scope){
 
@@ -210,6 +212,7 @@ angular.module('oz.d3Map',[])
                   drawMap();
               }
 
+              if (!$scope.skipD3Drawings)
               if ($scope.getMapUpdater && angular.isFunction($scope.getMapUpdater)) {
                       try {
                           $scope.getMapUpdater().then(function () {
@@ -331,199 +334,201 @@ angular.module('oz.d3Map',[])
 
             function addObjects(objects) {
 
-              if(objects == undefined || objects == null)
+                if (objects == undefined || objects == null)
                     return;
 
-              if (angular.isArray(objects)) {
-                angular.forEach(objects, function (subObjects) {
-                  if (subObjects.objects) {
-                    addObjects(subObjects);
-                  }
-                });
-                return true;
-              }
-              var objectsType, nodes, nodeHandler;
-              var getID = function (d) {return d.id;};
-              var getContent = function (d) {return d.data;};
-              if (!angular.isArray(objects) && angular.isArray(objects.objects)) {
-                objectsType = objects.type;
-                if (angular.isFunction(objects.getID)) {
-                  getID = objects.getID;
-                }
-                if (angular.isFunction(objects.getContent)) {
-                  getContent = objects.getContent;
-                }
-                nodeHandler = objects.nodeHandler;
-                objects = objects.objects;
-                if (!angular.isArray(objects)) {
-                  console.error('d3-map: Expected array of objects or array of array of objects.', objects);
-                  return false;
-                }
-              }
-              var nodesParent = $scope.g.append('g');
-              switch (objectsType) {
-                case 'circle':
-                  nodes = nodesParent
-                    .attr('id', 'level' + parseInt($scope.stack.length + 1))
-                    .selectAll('path')
-                    .data(objects)
-                    .enter()
-                    .append('circle')
-                    .attr('r', function (d) {
-                      return d.r || $scope.circleRadius;
-                    })
-                    .attr('id', getID)
-                    .attr('class', $scope.pointClass)
-                    .attr('transform', function (d) {
-                      return 'translate(' + $scope.projection([
-                        d.location.longitude,
-                        d.location.latitude
-                      ]) + ')';
+                if (angular.isArray(objects)) {
+                    angular.forEach(objects, function (subObjects) {
+                        if (subObjects.objects) {
+                            addObjects(subObjects);
+                        }
                     });
-                  break;
-                case 'text':
-                  nodes = nodesParent
-                    .attr('id', 'level' + parseInt($scope.stack.length + 1))
-                    .selectAll('text')
-                    .data(objects)
-                    .enter()
-                    .append('text')
-                    .attr('transform', function (d) {
-                      var centerCoordinates = $scope.projection([
-                        d.location.longitude,
-                        d.location.latitude
-                      ]);
-                      centerCoordinates[1] += parseFloat(parseInt($scope.textFontSize)/3);
-                      return 'translate(' + centerCoordinates + ')';
-                    })
-                    .attr("font-family", $scope.textFont)
-                    .attr("font-size", $scope.textFontSize)
-                    .attr("class", $scope.textClass)
-                    .text(getContent);
-                  break;
-                case 'div':
-                  nodesParent = nodesParent.attr('id', 'level' + parseInt($scope.stack.length + 1))
-                    .append('foreignObject').attr("width", $scope.actualWidth).attr("height", $scope.actualHeight);  // may need to prepend scope before height and width
-                  nodes = nodesParent
-                    .selectAll('div')
-                    .data(objects)
-                    .enter()
-                    .append('xhtml:div')
-                    .attr('style', function (d) {
-                      var centerCoordinates = $scope.projection([
-                        d.location.longitude,
-                        d.location.latitude
-                      ]);
-                      var padding = parseFloat(parseInt($scope.textFontSize));
-                      centerCoordinates[0] -= padding;
-                      centerCoordinates[1] -= padding;
-                      return 'position: absolute; left: ' + centerCoordinates[0] + 'px; top: ' + centerCoordinates[1] + 'px;';
-                    })
-                    .attr("class", $scope.divClass)
-                    .html(getContent);
-                  break;
-                //case 'path':
-                  default:
-                  var areaClass = $scope.areaClass;
-                  if ($scope.stack.length > 0) {
-                    areaClass = areaClass + " "+ $scope.activeClass;
-                  }
-
-                    $scope.dataObjects = objects;
-                  nodes = nodesParent
-                    .attr('id', 'level' + parseInt($scope.stack.length + 1))
-                    .selectAll("path")
-                    .data($scope.dataObjects)
-                    .enter()
-                    .append("path")
-                    .attr("id", getID)
-                      .attr("data_level", parseInt($scope.stack.length + 1) )
-                    .attr("class", areaClass)
-                      .attr("d", $scope.path)
-                    .on("click", function (d) {
-                          $scope.tip.hide(d);
-
-                          if(!$scope.processCoord || !angular.isFunction($scope.processCoord))
-                          {
-                              d.thisRef = this;
-                              var nodeLevel = parseInt(this.attributes["data_level"].value);
-                              //mapClicked(d, stack.length);
-                              mapClicked(d, nodeLevel);
-                          }
-                          else
-                          {
-                              var longLat = null;
-                              if(!$scope.generateLeaflet)
-                                longLat = $scope.projection.invert(d3.mouse(this));
-                              var proceed = true;
-
-                              if($scope.generateLeaflet)
-                              {
-                                  if(angular.isDefined($scope.processCoord()) && angular.isFunction($scope.processCoord()) )
-                                  {
-                                      var temp = {
-                                          recordMarkerLocation : $scope.recordMarkerLocation
-                                      };
-
-                                      $scope.processCoord()(longLat, d, temp);
-
-                                      $scope.recordMarkerLocation = temp.recordMarkerLocation;
-                                      temp = null;
-                                  }
-                              }
-                              else
-                              {
-                                  proceed = (angular.isDefined($scope.processCoord()) && angular.isFunction($scope.processCoord()) )
-                                      ? $scope.processCoord()(longLat, d): true;
-                              }
-                              if(proceed == false)
-                                return;
-
-                              d.thisRef = this;
-                              var nodeLevel = parseInt(this.attributes["data_level"].value);
-                              //mapClicked(d, stack.length);
-                              mapClicked(d, nodeLevel);
-                          }
-                    });
-
-                    if($scope.hightlightOnMouseOver)
-                    {
-                        nodes.on("mouseover", function(d, idx) {
-
-
-                            $scope.nodeIndex = idx;
-                            var parentNode = this.parentNode;
-                            parentNode.removeChild(this);
-                            parentNode.appendChild(this);
-                                d.context = this.getBoundingClientRect();
-
-                            $scope.tip.offset(  [this.getBBox().height / 2, 0] );
-                            $scope.tip.show(d);
-                            parentNode = null;
-                        });
-
-                        nodes.on("mouseout", function(d) {
-                            $scope.tip.hide(d);
-
-                            var parentNode = this.parentNode;
-                            parentNode.removeChild(this);
-
-                            var nodeAtIdx = parentNode.childNodes[$scope.nodeIndex];
-
-                            parentNode.insertBefore(this, nodeAtIdx);
-                            nodeAtIdx = parentNode = null;
-
-                        });
+                    return true;
+                }
+                var objectsType, nodes, nodeHandler;
+                var getID = function (d) {
+                    return d.id;
+                };
+                var getContent = function (d) {
+                    return d.data;
+                };
+                if (!angular.isArray(objects) && angular.isArray(objects.objects)) {
+                    objectsType = objects.type;
+                    if (angular.isFunction(objects.getID)) {
+                        getID = objects.getID;
                     }
+                    if (angular.isFunction(objects.getContent)) {
+                        getContent = objects.getContent;
+                    }
+                    nodeHandler = objects.nodeHandler;
+                    objects = objects.objects;
+                    if (!angular.isArray(objects)) {
+                        console.error('d3-map: Expected array of objects or array of array of objects.', objects);
+                        return false;
+                    }
+                }
+                var nodesParent = $scope.g.append('g');
+
+                if (!$scope.skipD3Drawings)
+                {
+                    switch (objectsType) {
+                        case 'circle':
+                            nodes = nodesParent
+                                .attr('id', 'level' + parseInt($scope.stack.length + 1))
+                                .selectAll('path')
+                                .data(objects)
+                                .enter()
+                                .append('circle')
+                                .attr('r', function (d) {
+                                    return d.r || $scope.circleRadius;
+                                })
+                                .attr('id', getID)
+                                .attr('class', $scope.pointClass)
+                                .attr('transform', function (d) {
+                                    return 'translate(' + $scope.projection([
+                                        d.location.longitude,
+                                        d.location.latitude
+                                    ]) + ')';
+                                });
+                            break;
+                        case 'text':
+                            nodes = nodesParent
+                                .attr('id', 'level' + parseInt($scope.stack.length + 1))
+                                .selectAll('text')
+                                .data(objects)
+                                .enter()
+                                .append('text')
+                                .attr('transform', function (d) {
+                                    var centerCoordinates = $scope.projection([
+                                        d.location.longitude,
+                                        d.location.latitude
+                                    ]);
+                                    centerCoordinates[1] += parseFloat(parseInt($scope.textFontSize) / 3);
+                                    return 'translate(' + centerCoordinates + ')';
+                                })
+                                .attr("font-family", $scope.textFont)
+                                .attr("font-size", $scope.textFontSize)
+                                .attr("class", $scope.textClass)
+                                .text(getContent);
+                            break;
+                        case 'div':
+                            nodesParent = nodesParent.attr('id', 'level' + parseInt($scope.stack.length + 1))
+                                .append('foreignObject').attr("width", $scope.actualWidth).attr("height", $scope.actualHeight);  // may need to prepend scope before height and width
+                            nodes = nodesParent
+                                .selectAll('div')
+                                .data(objects)
+                                .enter()
+                                .append('xhtml:div')
+                                .attr('style', function (d) {
+                                    var centerCoordinates = $scope.projection([
+                                        d.location.longitude,
+                                        d.location.latitude
+                                    ]);
+                                    var padding = parseFloat(parseInt($scope.textFontSize));
+                                    centerCoordinates[0] -= padding;
+                                    centerCoordinates[1] -= padding;
+                                    return 'position: absolute; left: ' + centerCoordinates[0] + 'px; top: ' + centerCoordinates[1] + 'px;';
+                                })
+                                .attr("class", $scope.divClass)
+                                .html(getContent);
+                            break;
+                        //case 'path':
+                        default:
+                            var areaClass = $scope.areaClass;
+                            if ($scope.stack.length > 0) {
+                                areaClass = areaClass + " " + $scope.activeClass;
+                            }
+
+                            $scope.dataObjects = objects;
+                            nodes = nodesParent
+                                .attr('id', 'level' + parseInt($scope.stack.length + 1))
+                                .selectAll("path")
+                                .data($scope.dataObjects)
+                                .enter()
+                                .append("path")
+                                .attr("id", getID)
+                                .attr("data_level", parseInt($scope.stack.length + 1))
+                                .attr("class", areaClass)
+                                .attr("d", $scope.path)
+                                .on("click", function (d) {
+                                    $scope.tip.hide(d);
+
+                                    if (!$scope.processCoord || !angular.isFunction($scope.processCoord)) {
+                                        d.thisRef = this;
+                                        var nodeLevel = parseInt(this.attributes["data_level"].value);
+                                        //mapClicked(d, stack.length);
+                                        mapClicked(d, nodeLevel);
+                                    }
+                                    else {
+                                        var longLat = null;
+                                        if (!$scope.generateLeaflet)
+                                            longLat = $scope.projection.invert(d3.mouse(this));
+                                        var proceed = true;
+
+                                        if ($scope.generateLeaflet) {
+                                            if (angular.isDefined($scope.processCoord()) && angular.isFunction($scope.processCoord())) {
+                                                var temp = {
+                                                    recordMarkerLocation: $scope.recordMarkerLocation
+                                                };
+
+                                                $scope.processCoord()(longLat, d, temp);
+
+                                                $scope.recordMarkerLocation = temp.recordMarkerLocation;
+                                                temp = null;
+                                            }
+                                        }
+                                        else {
+                                            proceed = (angular.isDefined($scope.processCoord()) && angular.isFunction($scope.processCoord()) )
+                                                ? $scope.processCoord()(longLat, d) : true;
+                                        }
+                                        if (proceed == false)
+                                            return;
+
+                                        d.thisRef = this;
+                                        var nodeLevel = parseInt(this.attributes["data_level"].value);
+                                        //mapClicked(d, stack.length);
+                                        mapClicked(d, nodeLevel);
+                                    }
+                                });
+
+                            if ($scope.hightlightOnMouseOver) {
+                                nodes.on("mouseover", function (d, idx) {
 
 
-                  if(!$scope.generateLeaflet)
-                      $scope.timeoutToken = $timeout(function () {
-                              adjustTranslation();
-                              $timeout.cancel($scope.timeoutToken);
-                         $scope.timeoutToken = null;
-                      }, 5);
-              }
+                                    $scope.nodeIndex = idx;
+                                    var parentNode = this.parentNode;
+                                    parentNode.removeChild(this);
+                                    parentNode.appendChild(this);
+                                    d.context = this.getBoundingClientRect();
+
+                                    $scope.tip.offset([this.getBBox().height / 2, 0]);
+                                    $scope.tip.show(d);
+                                    parentNode = null;
+                                });
+
+                                nodes.on("mouseout", function (d) {
+                                    $scope.tip.hide(d);
+
+                                    var parentNode = this.parentNode;
+                                    parentNode.removeChild(this);
+
+                                    var nodeAtIdx = parentNode.childNodes[$scope.nodeIndex];
+
+                                    parentNode.insertBefore(this, nodeAtIdx);
+                                    nodeAtIdx = parentNode = null;
+
+                                });
+                            }
+
+
+                            if (!$scope.generateLeaflet)
+                                $scope.timeoutToken = $timeout(function () {
+                                    adjustTranslation();
+                                    $timeout.cancel($scope.timeoutToken);
+                                    $scope.timeoutToken = null;
+                                }, 5);
+                    }
+                }
               if (angular.isFunction(nodeHandler)) {
                 nodeHandler(nodes, nodesParent, projection);
               }
@@ -531,15 +536,19 @@ angular.module('oz.d3Map',[])
                 if(!$scope.skipLeafletInitialized)
               if($scope.generateLeaflet)
               {
-                  $scope.map.on("viewreset", reset);
+                  if(!$scope.skipD3Drawings) {
+                      $scope.map.on("viewreset", reset);
 
-                  $scope.map.on('zoomstart', function(e) {
-                      console.log(e); console.log(this); console.log($scope.map);
-                      var toRemove = $scope.g.selectAll('#level' + ($scope.stack.length + 1));
-                      if (toRemove) {
-                          toRemove.remove();
-                      }
-                  });
+                      $scope.map.on('zoomstart', function (e) {
+                          console.log(e);
+                          console.log(this);
+                          console.log($scope.map);
+                          var toRemove = $scope.g.selectAll('#level' + ($scope.stack.length + 1));
+                          if (toRemove) {
+                              toRemove.remove();
+                          }
+                      });
+                  }
 
                   if($scope.leafletEnableMarker)
                   {
@@ -550,7 +559,7 @@ angular.module('oz.d3Map',[])
 
                               if ($scope.leafletMarker == null) {
 
-                                  if((angular.isDefined($scope.getMarkerIcon)) && (angular.isFunction($scope.getMarkerIcon))) {
+                                  if((angular.isDefined($scope.getMarkerIcon())) && (angular.isFunction($scope.getMarkerIcon))) {
 
                                       var icon = $scope.getMarkerIcon()();
                                       $scope.leafletMarker = L.marker()
@@ -582,7 +591,7 @@ angular.module('oz.d3Map',[])
 
                       });
 
-                      if((angular.isDefined($scope.getLeafletLatLongCoordUpdater)) && (angular.isFunction($scope.getLeafletLatLongCoordUpdater)))
+                      if((angular.isDefined($scope.getLeafletLatLongCoordUpdater())) && (angular.isFunction($scope.getLeafletLatLongCoordUpdater)))
                       {
                           $scope.getLeafletLatLongCoordUpdater().then(function(data){}, function(){}, function(latLong){
                               //if($scope.recordMarkerLocation) {
@@ -634,6 +643,7 @@ angular.module('oz.d3Map',[])
 
                   $scope.skipLeafletInitialized = true;
 
+                  if(!$scope.skipD3Drawings)
                   reset();
 
               }

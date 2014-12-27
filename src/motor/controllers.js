@@ -1,5 +1,5 @@
 var appControllers = angular.module('appControllers', []);
-
+/*
 appControllers.controller('VideoListController', ['$scope', '$routeParams', '$location', 'medService', function ($scope, $routeParams, $location, videoService) {
     // debugger;
     $scope.medService = medService;
@@ -13,7 +13,7 @@ appControllers.controller('VideoListController', ['$scope', '$routeParams', '$lo
         $location.path(path);
     };
 
-}]);
+}]);*/
 
 appControllers.controller('mainAppController',['$scope','$route', '$location','securityService', '$rootScope', '$modal', '$templateCache',
     function($scope, $route, $location, securityService, $rootScope, $modal, $templateCache){
@@ -623,12 +623,23 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
         $scope.currentMasterSelection = null;
 
         $scope.caseTypes = [];
-
+        $scope.selectedItemCaseTypes = [];
         $scope.cases = [];
-
         $scope.markers = [];
+        $scope.notes = [];
+
+        $scope.selectedItemCaseStatusConfigured = true;
+        $scope.selectedItemCaseStatusLabel = "";
+        //$scope.selectedItemCaseStatusId = null;
+
+
 
         /***************** Master List********************************/
+        $scope.showSaveCancelAppendNoteBtn = false;
+        $scope.modInitialized = false;
+        $scope.noteEditing = false;
+        $scope.selectedItemId = null;
+
         $scope.filterSelected = function(val){
             $scope.filterModel = val;
         };
@@ -636,8 +647,11 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
         $scope.masterItemSelected = function(item){
             $scope.processing = true;
 
+            $scope.selectedItemId = item.id;
+
             var arrLength = $scope.cases.length;
 
+            //iterate cases and configure matching item and its markers as well as its caseStatus
             for(var i = 0; i < arrLength; i++)
             {
                 $scope.cases[i].clClass = null;
@@ -646,66 +660,368 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
                 {
                     $scope.cases[i].clClass = "masterListAnchor";
                     $scope.currentMasterSelection = $scope.cases[i];
+
+                    var markersLength = $scope.markers.length;
+
+                    //iterate markers and set flag for selected item flag
+                    for(var u = 0; u < markersLength; u++)
+                    {
+                        $scope.markers[u].isSelected = false;
+
+                        if($scope.markers[u].id == item.id)
+                        {
+                            $scope.markers[u].isSelected = true;
+                        }
+                    }
+
+                    $scope.configureCaseStatus(item);
+
+
                 }
             }
+            if($scope.markersLoader != null)
+                $scope.markersLoader.notify(null);
+
+            $scope.notes = [];
+            $scope.loadNotes(item.id);
+            $scope.processing = false;
+        };
+
+        $scope.loadNotes = function(caseId){
 
             $scope.processing = true;
+            // pass in the dcaseId
+            $scope.caseService.loadNotes(caseId).then(function(arrNotesData){
+                var arrNotesDataLength = arrNotesData.length;
+
+                for(var i = 0; i < arrNotesDataLength; i++)
+                {
+                    $scope.notes.push({id: arrNotesData[i].id, date: arrNotesData[i].quand, note: arrNotesData[i].detail , status: "unchanged"});
+                }
+                $scope.processing = false;
+            }, function(msg){
+                $scope.showNotification("Error loading notes for " + item.id + " " + msg);
+                $scope.processing = false;
+            });
+        };
+
+
+        $scope.appendNote = function(){
+
+            if($scope.noteEditing)
+            return;
+
+            $scope.noteEditing = true;
+
+            if($scope.currentMasterSelection != null)
+            {
+                $scope.notes.push(
+                    {
+                        id: "##",
+                        date: new Date(),
+                        note: " ",
+                        status: "added"
+                    }
+                );
+                $scope.showSaveCancelAppendNoteBtn = true;
+            }
+        };
+
+        $scope.cancelAppendNote = function(){
+            $scope.notes.pop();
+            $scope.showSaveCancelAppendNoteBtn = false
+            $scope.noteEditing = false;
+        };
+
+        $scope.saveAppendNote = function(){
+            $scope.processing = true;
+            var item = $scope.notes.pop();
+
+            $scope.caseService.saveNote({quand: new Date(), detail: item.note, dcaseId: $scope.selectedItemId }).then(function(data){
+                $scope.notes = [];
+
+                var timeoutToken = $timeout(function(){
+                    $timeout.cancel(timeoutToken);
+                    timeoutToken = null;
+                    $scope.loadNotes($scope.selectedItemId);
+                    $scope.processing = false;
+                }, 106);
+            }, function(msg){
+                $scope.showNotification("Error saving note for " + $scope.selectedItemId + " " + msg);
+                $scope.processing = false;
+            });
+
+
+            item.status = "unchanged";
+            $scope.notes.push(item);
+            // send to DB and reload
+            $scope.showSaveCancelAppendNoteBtn = false
+            $scope.noteEditing = false;
+
+            $scope.processing = false;
         };
 
         $scope.initMod = function(){
-            $scope.caseService.loadCaseStatus().then(function(caseTypesData){
+            if(!$scope.modInitialized) {
+                $scope.processing = true;
+                $scope.caseService.loadCaseStatus().then(function (caseTypesData) {
 
-                var caseTypesDataLength = caseTypesData.length;
+                    var caseTypesDataLength = caseTypesData.length;
 
-                $scope.caseTypes.push({id: null, name:"All"});
+                    $scope.caseTypes.push({id: null, name: "All"});
+                    $scope.selectedItemCaseTypes.push({id: null, name: "Not Defined!"});
 
-                for (var i = 0; i < caseTypesDataLength; i++)
-                {
-                    $scope.caseTypes.push({id: caseTypesData[i].id, name:caseTypesData[i].label});
-                }
-                caseTypesData = null;
-
-                $scope.caseService.loadCases().then(function(casesData){
-
-
-                   /*
-                    initiallyDetected:{type: Date},
-                    dateConfirmed:{type: Date},
-
-                    */
-
-                    var casesDataLength = casesData.length;
-
-                    for(var i = 0; i < casesDataLength; i++)
-                    {
-                        $scope.cases.push(
-                            {
-                                id:casesData[i].id,
-                                name: "testdf" + casesData[i].id ,
-                                date: casesData[i].initiallyReported,
-                                caseType: casesData[i].diseaseTypeId,
-                                caseStatus: casesData[i].caseStatusId,
-                                synop: casesData[i].description,
-                                clClass: null
-                            }
-                        );
-                        $scope.markers.push(
-                            {
-                                id: casesData[i].id,
-                                lat:casesData[i].locationLat,
-                                long:casesData[i].locationLong
-                            }
-                        );
+                    for (var i = 0; i < caseTypesDataLength; i++) {
+                        $scope.caseTypes.push({id: caseTypesData[i].id, name: caseTypesData[i].label});
+                        $scope.selectedItemCaseTypes.push({id: caseTypesData[i].id, name: caseTypesData[i].label});
                     }
-                    casesData = null;
+                    caseTypesData = null;
 
-                }, function(msg){
-                    $scope.showNotification("Error loading cases ....");
-                });
+                    $scope.caseService.loadCases().then(function (casesData) {
+                        /*
+                         initiallyDetected:{type: Date},
+                         dateConfirmed:{type: Date},
 
-            },function(msg){
-                $scope.showNotification("Error loading case status ....");
-            })
+                         */
+
+                        var casesDataLength = casesData.length;
+
+                        for (var i = 0; i < casesDataLength; i++) {
+                            $scope.cases.push(
+                                {
+                                    id: casesData[i].id,
+                                    name: "testdf" + casesData[i].id,
+                                    date: casesData[i].initiallyReported,
+                                    caseType: casesData[i].diseaseTypeId,
+                                    caseStatus: casesData[i].caseStatusId,
+                                    synop: casesData[i].description,
+                                    clClass: null,
+                                    statusEdited: false,
+                                    originalCaseStatus: casesData[i].caseStatusId
+                                }
+                            );
+                            $scope.markers.push(
+                                {
+                                    id: casesData[i].id,
+                                    lat: casesData[i].locationLat,
+                                    long: casesData[i].locationLong,
+                                    isSelected: false
+                                }
+                            );
+                        }
+                        casesData = null;
+                        $scope.markersLoader.notify(null);
+                        $scope.processing = false;
+
+                    }, function (msg) {
+                        $scope.showNotification("Error loading cases ....");
+                    });
+
+                }, function (msg) {
+                    $scope.showNotification("Error loading case status ....");
+                })
+
+                $scope.modInitialized = true;
+            }
+        };
+
+        $scope.configureCaseStatus = function(item){
+            $scope.selectedItemCaseStatusConfigured = null;
+            if(item.caseStatus == undefined || item.caseStatus == null)
+            {
+                item.caseStatus = null;
+                $scope.selectedItemCaseStatusConfigured = false;
+            }
+
+            // determine item casestatusid label
+            var caseStatusLength = $scope.selectedItemCaseTypes.length;
+            for(var i = 0; i < caseStatusLength; i++)
+            {
+                var statusVal = $scope.selectedItemCaseTypes[i];
+
+                if(statusVal.id == item.caseStatus)
+                {
+                    $scope.selectedItemCaseStatusLabel = statusVal.name;
+                }
+            }
+            // item.statusEdited set from $scope.setSelectedItemCaseStatus  //set from above on entry   // checking status label
+            if( (item.statusEdited == false) && ($scope.selectedItemCaseStatusConfigured == null) && (angular.lowercase($scope.selectedItemCaseStatusLabel) !== angular.lowercase("Pending")))
+            {
+                $scope.selectedItemCaseStatusConfigured = true;
+            }
+            else
+            {
+                $scope.selectedItemCaseStatusConfigured = false;
+            }
+        };
+
+        $scope.setSelectedItemCaseStatus = function(caseTypeId){
+            var caseItem = $scope.findCase($scope.selectedItemId);
+            if(caseItem != null)
+            {
+                caseItem.caseStatus = caseTypeId;
+                caseItem.statusEdited = true;
+                $scope.configureCaseStatus(caseItem);
+            }
+        };
+
+        $scope.findCase = function(caseId){
+            var casesLength = $scope.cases.length;
+            var foundCase = null;
+            for(var i = 0; i < casesLength; i++)
+            {
+                if($scope.cases[i].id == caseId)
+                {
+                    foundCase = $scope.cases[i];
+                    break;
+                }
+            }
+            return foundCase;
+        };
+
+        $scope.cancelSelectedItemCaseStatus = function(){
+            var caseItem = $scope.findCase($scope.selectedItemId);
+            if(caseItem != null)
+            {
+                caseItem.caseStatus = caseItem.originalCaseStatus;
+                caseItem.statusEdited = false;
+                $scope.configureCaseStatus(caseItem);
+            }
+        };
+
+        $scope.saveSelectedItemCaseStatus = function(){
+
+            var caseItem = $scope.findCase($scope.selectedItemId);
+
+            if(caseItem == null || (caseItem.statusEdited == false))
+                return
+
+            $scope.modInitialized = false;
+            $scope.processing = true;
+
+
+
+            $scope.caseService.updateCaseStatus({caseId: $scope.selectedItemId  , caseStatusId: caseItem.caseStatus  }).then(function(){
+                    $scope.caseTypes = [];
+                    $scope.selectedItemCaseTypes = [];
+                    $scope.cases = [];
+                    $scope.markers = [];
+                    $scope.notes = [];
+                    $scope.initMod();
+                },
+                function(msg){ $scope.showNotification("Error updating cases status ...."); });
+        };
+
+        /********************* map leaflet  **/
+
+        $scope.latLongPromise = null;
+        $scope.markersLoader = null;
+        $scope.selectedCaseIconEx = L.Icon.extend({
+            options: {
+                iconSize:     [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor:  [-3, -76]
+            }
+        });
+
+        $scope.selectedCaseIcon = new $scope.selectedCaseIconEx({ iconUrl: 'motor/images/marker-icon-greenish.png' });
+
+        $scope.getMap = function(parentEntity){
+            var deferred = $q.defer();
+
+            var timeoutToken = $timeout(function(){
+                $timeout.cancel(timeoutToken);
+                timeoutToken = null;
+
+                deferred.resolve({type:'path', objects:[]});
+
+            },5);
+
+
+            return deferred.promise;
+        };
+
+        $scope.markersLoaderUpdater = function(){
+            if($scope.markersLoader == null)
+                $scope.markersLoader = $q.defer();
+
+            $scope.timeoutToken = $timeout(function(){
+                $timeout.cancel($scope.timeoutToken);
+                $scope.timeoutToken = null;
+
+                //$scope.markersLoader.notify(null);
+            },3);
+
+            return $scope.markersLoader.promise;
+        };
+
+// map : ..., markers: ....
+        $scope.loadMarkers = function(mapWrapper){
+
+            if(mapWrapper == null || mapWrapper == undefined)
+                return;
+
+            var markersLength = mapWrapper.markers.length;
+
+            for( var i = 0; i < markersLength ; i++) {
+                var mrker = mapWrapper.markers.shift();
+                mapWrapper.map.removeLayer(mrker);
+                mrker = null;
+            }
+
+
+            if($scope.markers != null)
+            {
+                var dataLength = $scope.markers.length;
+                var lastMarker = null;
+
+                for(var i = 0; i < dataLength; i++)
+                {
+                    var marker = null;
+
+                    if($scope.markers[i].isSelected)
+                    {
+                        var name = "";
+                        var casesLength = $scope.cases.length
+
+                        for(var ii = 0; ii < casesLength; ii++)
+                        {
+                            if( $scope.cases[ii].id == $scope.markers[i].id )
+                            {
+                                name = $scope.cases[ii].name;
+                                break;
+                            }
+                        }
+
+                        marker = lastMarker = L.marker([$scope.markers[i].lat, $scope.markers[i].long], {title: name, icon: $scope.selectedCaseIcon });
+
+                    }
+                    else {
+                        marker = L.marker([$scope.markers[i].lat, $scope.markers[i].long])
+                            .addTo(mapWrapper.map);
+                    }
+                    mapWrapper.markers.push(marker);
+                }
+
+                if(lastMarker != null)
+                    lastMarker.addTo(mapWrapper.map);
+            }
+
+        };
+
+        /*****************************Add mod **/
+
+        $scope.getLeafletLatLongCoord = function(lat, long){
+
+            //$scope.reportViewModel.model.latitude = lat;
+            //$scope.reportViewModel.model.longitude = long;
+        };
+
+        $scope.setLeafletLatLongCoord = function(){
+
+            if($scope.latLongPromise == null)
+                $scope.latLongPromise = $q.defer();
+            return $scope.latLongPromise.promise;
         };
 
 

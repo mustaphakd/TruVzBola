@@ -258,15 +258,20 @@
     }
 
     .coqPending{
+        position: absolute;
         padding-left: 40%;
-        padding-top: 45%;
-        padding-bottom: 30%;
-        background-color: rgba(222, 223, 229, 1);
+        padding-top: 37%;
+        padding-right: 53%;
+        padding-bottom: 45%;
+        background-color: rgba(222, 223, 229, 0.86);
         margin-left: -2%;
         margin-right: -2.2%;
         border-radius: 15px;
         border-style: solid;
         z-index: 5;
+    }
+    #casePendingleafletContainer{
+        min-height: 300px;
     }
 }
 @media (min-width: 768px){

@@ -116,7 +116,7 @@ appservices.service('repositoryService', [ "$data", "$q", function($data, $q){
             CaseStatus: {type: $data.EntitySet, elementType: caseStatus}
         });
 
-    this.Db = new CDMDatabase({ provider: 'indexedDb', databaseName:'DiseaseMonitoringDb', version: 1.30 });
+    this.Db = new CDMDatabase({ provider: 'indexedDb', databaseName:'DiseaseMonitoringDb', version: 1.35 });
 
 
     /* debug version
@@ -689,7 +689,64 @@ appservices.factory('reportCaseService', [  "$location", "$q" , "repositoryServi
         });
 
         return deferred.promise;
-    }
+    };
+
+    service.loadNotes = function(caseId){
+        var deferred = $q.defer();
+        var repos = repositoryService.Db;
+        var notes = [];
+
+        repos.onReady(function(){
+            repos.Notes.forEach(function(note){
+                if(note.dcaseId == caseId)
+                {
+                    notes.push(note);
+                }
+            }).then(function(){
+                deferred.resolve(notes);
+            });
+        });
+
+        return deferred.promise;
+    };
+
+    service.saveNote = function(newNote){
+        var deferred = $q.defer();
+        var repos = repositoryService.Db;
+
+        repos.onReady(function(){
+            repos.Notes.add(newNote);
+            repos.saveChanges();
+
+            deferred.resolve(newNote);
+        });
+
+        return deferred.promise;
+    };
+
+    service.updateCaseStatus = function(varArg){
+
+        var caseId = varArg.caseId;
+        var caseStatusId = varArg.caseStatusId;
+
+        var deferred = $q.defer();
+        var repos = repositoryService.Db;
+
+        repos.onReady(function(){
+            repos.Cases.first(function(searchCase){
+                return searchCase.id == this.caseToSearchId;
+            },
+                {caseToSearchId: caseId},
+                function(foundCase){
+                    repos.Cases.attach(foundCase);
+                    foundCase.caseStatusId = caseStatusId;
+                    repos.saveChanges();
+                    deferred.resolve(null);
+                });
+        });
+
+        return deferred.promise;
+    };
 
     return service;
 }]);
