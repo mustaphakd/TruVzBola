@@ -213,7 +213,7 @@ angular.module('oz.d3Map',[])
               }
 
               if (!$scope.skipD3Drawings)
-              if ($scope.getMapUpdater && angular.isFunction($scope.getMapUpdater)) {
+              if (angular.isDefined($scope.getMapUpdater()) && angular.isFunction($scope.getMapUpdater)) {
                       try {
                           $scope.getMapUpdater().then(function () {
                               },

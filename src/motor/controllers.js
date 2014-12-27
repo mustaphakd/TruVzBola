@@ -621,6 +621,7 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
         $scope.filterModel = null;
         $scope.processing = false;
         $scope.currentMasterSelection = null;
+        $scope.caseViewUrl = "views/cases/pending.html";
 
         $scope.caseTypes = [];
         $scope.selectedItemCaseTypes = [];
@@ -631,9 +632,6 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
         $scope.selectedItemCaseStatusConfigured = true;
         $scope.selectedItemCaseStatusLabel = "";
         //$scope.selectedItemCaseStatusId = null;
-
-
-
         /***************** Master List********************************/
         $scope.showSaveCancelAppendNoteBtn = false;
         $scope.modInitialized = false;
@@ -762,7 +760,14 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
         };
 
         $scope.initMod = function(){
-            if(!$scope.modInitialized) {
+            //if(!$scope.modInitialized) {
+
+            $scope.caseTypes = [];
+            $scope.selectedItemCaseTypes = [];
+            $scope.cases = [];
+            $scope.markers = [];
+            //$scope.notes = [];
+
                 $scope.processing = true;
                 $scope.caseService.loadCaseStatus().then(function (caseTypesData) {
 
@@ -822,7 +827,17 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
                 })
 
                 $scope.modInitialized = true;
-            }
+            /* }
+            else
+            {
+
+                $scope.timeoutToken = $timeout(function(){
+                    $timeout.cancel($scope.timeoutToken);
+                    $scope.timeoutToken = null;
+                    $scope.markersLoader.notify(null);
+                },3);
+
+            }*/
         };
 
         $scope.configureCaseStatus = function(item){
@@ -1024,6 +1039,27 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
             return $scope.latLongPromise.promise;
         };
 
+        $scope.getGeneratedDefaultCaseStatus = function(){
+            //return pending case status id
+            var caseStatusLength = $scope.selectedItemCaseTypes.length;
+            for(var i = 0; i < caseStatusLength; i++)
+            {
+                var statusVal = $scope.selectedItemCaseTypes[i];
+
+                if(angular.lowercase(statusVal.name) == angular.lowercase('validated'))
+                {
+                    return statusVal.id;
+                }
+            }
+            return null;
+        };
+
+        $scope.getNextViewUrl = function(){
+            $scope.viewModel = 'pending';
+            //$scope.caseViewUrl = 'views/cases/pending.html' ;
+            return 'views/cases/pending.html';
+        };
+
 
 }]);
 
@@ -1201,9 +1237,21 @@ appControllers.controller('reportcaseController', ['$scope', '$routeParams', '$l
                     provinceId:$scope.reportViewModel.model.province, //get both countryId and provinceid from the process lonlat coordinate above
                     description: $scope.reportViewModel.model.synop
                 };
+
+                if(angular.isDefined($scope.getGeneratedDefaultCaseStatus))
+                {
+                    object.caseStatusId = $scope.getGeneratedDefaultCaseStatus();
+                }
+
                 $scope.reportCaseService.reportSuspiciousCase(object).then(function(rsp){
                     $scope.thankUmessage = $scope.saveMessage;
-                    $scope.viewUrl = "views/caseReport/thankyou.html";
+
+                    if(angular.isDefined($scope.getNextViewUrl))
+                    {
+                        $scope.viewUrl = $scope.getNextViewUrl();
+                    }
+                    else
+                        $scope.viewUrl = "views/caseReport/thankyou.html";
                 } );
             }
         };
