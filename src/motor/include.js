@@ -63,8 +63,11 @@ function ImportJsFilesWrapper()
         "libs/prefixfree.min.js",
         "libs/jaydata.js",
         "libs/jaydata-angular.min.js",
-        //'libs/topojson.js',
-
+        'libs/crossfilter.min.js',
+        'libs/dc.min.js',
+        'libs/angular-dc.js',
+        "motor/colorBrewer.js",
+        "motor/leaflet-heat.js",
         "motor/services.js",
         "motor/controllers.js",
         "motor/directives.js",

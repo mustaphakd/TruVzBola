@@ -127,11 +127,11 @@ appControllers.controller('mainAppController',['$scope','$route', '$location','s
 
         /***** alert modal structs****/
         $scope.alert = function(msg){
-            debugger;
+           // debugger;
             $scope.showModal("", msg, false, false);
         }
 
-        debugger;
+        //debugger;
         $scope.$root.$on('$routeChangeStart', function(scope, next, current){
             //console.log('Changing from '+angular.toJson(current)+' to '+angular.toJson(next));
             if (typeof(current) !== 'undefined'){
@@ -158,7 +158,7 @@ appControllers.controller('mainAppController',['$scope','$route', '$location','s
         });
 
         $scope.$root.$on('$routeUpdate', function(scope, next, current){
-            debugger;
+           // debugger;
             $scope.showNotification( 'Changing from '+angular.toJson(current)+' to '+angular.toJson(next));
         });
 /*
@@ -184,16 +184,154 @@ appControllers.controller('mainAppController',['$scope','$route', '$location','s
         }
 } ]);
 
-appControllers.controller('hotspotsController', ['$scope', '$routeParams', '$location', 'hotSpotService', function ($scope, $routeParams, $location, hotSpotService) {
-     debugger;
-    $scope.hotSpotService = hotSpotService;
+appControllers.controller('hotspotsController', ['$scope', '$routeParams', '$location', 'reportCaseService', '$q', function ($scope, $routeParams, $location, reportCaseService, $q ) {
+     //debugger;
+    $scope.caseService = reportCaseService
     $scope.$routeParams = $routeParams;
+    $scope.heatLoader = null;
+
+    $scope.heatLoaderUpdater = function(){
+        if($scope.heatLoader == null)
+            $scope.heatLoader = $q.defer();
+
+        return $scope.heatLoader.promise;
+    };
+
+// map : ..., markers: ....
+    $scope.loadHeaters = function(){
+
+        $scope.caseService.loadCases().then(function (casesData) {
+
+            var casesDataLength = casesData.length;
+            var latLng = [];
+
+            for (var i = 0; i < casesDataLength; i++) {
+                /*$scope.cases.push(
+                    {
+                        id: casesData[i].id,
+                        name: "testdf" + casesData[i].id,
+                        date: casesData[i].initiallyReported,
+                        caseType: casesData[i].diseaseTypeId,
+                        caseStatus: casesData[i].caseStatusId,
+                        synop: casesData[i].description,
+                        clClass: null,
+                        statusEdited: false,
+                        originalCaseStatus: casesData[i].caseStatusId
+                    }
+                );
+                latLng.push(
+                    {
+                        lat: casesData[i].locationLat,
+                        long: casesData[i].locationLong
+                    }
+                );*/
+
+                latLng.push(
+                    L.latLng( casesData[i].locationLat, casesData[i].locationLong )
+                );
+            }
+            casesData = null;
+
+            if($scope.heatLoader != null)
+            {
+                var temp = [];
+               // temp.push(latLng);
+                $scope.heatLoader.resolve(latLng);
+                //temp = null;
+            }
+
+
+
+        }, function (msg) {
+            $scope.showNotification("Error loading cases ....");
+        });
+    };
 }]);
 
-appControllers.controller('medcentersController', ['$scope', '$routeParams', '$location', 'medCentersService', function ($scope, $routeParams, $location, medCentersService) {
+appControllers.controller('medcentersController', ['$scope', '$routeParams', '$location', 'medService', '$q', function ($scope, $routeParams, $location, medService, $q) {
     debugger;
-    $scope.medCentersService = medCentersService;
+    $scope.medCentersService = medService;
     $scope.$routeParams = $routeParams;
+    $scope.markersLoaderPromese = null;
+
+    $scope.medIcon = L.Icon.extend({
+        options: {
+            iconSize:     [20, 32.8],
+            iconAnchor:   [22, 24],
+            popupAnchor:  [-3, -76]
+        }
+    });
+
+    $scope.icons = [
+        new $scope.medIcon({
+            iconUrl: 'motor/images/tent.png'
+        }),
+        new $scope.medIcon({
+            iconUrl: 'motor/images/csu-icon.png'
+        }),
+        new $scope.medIcon({
+            iconUrl: 'motor/images/chr-icon.png'
+        }),
+        new $scope.medIcon({
+            iconUrl: 'motor/images/chu-icon.png'
+        })
+    ];
+
+    $scope.getCustomIcon = function(flg){
+
+        switch(flg)
+        {
+            case 'csu':
+                return $scope.icons[1];
+                break;
+            case 'chr':
+                return $scope.icons[2];
+                break;
+            case 'chu':
+                return $scope.icons[3];
+                break;
+            default:
+                return  $scope.icons[0];
+                break;
+        }
+    };
+
+
+    $scope.markersLoaderNotifier = function(){
+        if($scope.markersLoaderPromese == null)
+            $scope.markersLoaderPromese = $q.defer();
+
+        return $scope.markersLoaderPromese.promise;
+    };
+
+// map : ..., markers: ....
+    $scope.loadMarkers = function(){
+
+        $scope.medCentersService.getMedSites().then(function(data)
+        {
+
+            if(data != null)
+            {
+                var dataLenth = data.length;
+
+                var temp = [];
+
+                for(var i = 0; i < dataLenth; i++)
+                {
+                    var icon = $scope.getCustomIcon(data[i].centerType);
+                    var marker = L.marker([data[i].locationLat, data[i].locationLong], {title: data[i].name, icon: icon })
+                        //.addTo(mapWrapper.map)
+                        .bindPopup("<h4>" + data[i].name + "</h4><h6>" + data[i].provinceName + "</h6>" +
+                        "<h6>" + data[i].countryName + "</h6>"  +"" + data[i].detail );
+                    temp.push(marker);
+                }
+                if($scope.markersLoaderPromese != null)
+                    $scope.markersLoaderPromese.resolve(temp);
+                temp = null;
+            }
+
+        }, function(msg){});
+    };
 }]);
 
 appControllers.controller('addMedcenterController', ['$scope', '$routeParams', '$location', 'medService','regionService', '$q',  '$timeout',
@@ -703,7 +841,6 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
             });
         };
 
-
         $scope.appendNote = function(){
 
             if($scope.noteEditing)
@@ -1059,6 +1196,183 @@ appControllers.controller('addCaseController', ['$scope', '$routeParams', '$loca
             //$scope.caseViewUrl = 'views/cases/pending.html' ;
             return 'views/cases/pending.html';
         };
+
+        /**************************Charts*********************************/
+
+        $scope.casesXfilter = null;
+        $scope.allGroup = null;
+        $scope.chartsInit = false;
+        $scope.diseaseTypes = null;
+
+        $scope.diseaseBarDimension = $scope.caseStatusBarDimension = null;
+        $scope.diseaseBarGroup = null;
+
+        $scope.dateMonthFormat = d3.time.format("%b");
+        $scope.dateYearFormat = d3.time.format("%Y");
+        /*
+         $scope.cases.push(
+         {
+         id: casesData[i].id,
+         name: "testdf" + casesData[i].id,
+         date: casesData[i].initiallyReported,
+         caseType: casesData[i].diseaseTypeId,
+         caseStatus: casesData[i].caseStatusId,
+         synop: casesData[i].description,
+         clClass: null,
+         statusEdited: false,
+         originalCaseStatus: casesData[i].caseStatusId
+         }
+         );
+        */
+        $scope.getDiseaseName = function(diseaseTypeId){
+            var length = $scope.diseaseTypes.length;
+
+            for(var i = 0; i < length; i++){
+                if($scope.diseaseTypes[i].id == diseaseTypeId)
+                {
+                    return $scope.diseaseTypes[i].name;
+                }
+            }
+            return "unknown";
+        };
+        $scope.getCaseStatusName = function(statusId){
+            var length = $scope.caseTypes.length;
+
+            if(statusId == null || !angular.isDefined(statusId))
+            return 'Pending'
+
+            for(var i = 0; i < length; i++){
+
+                if($scope.caseTypes[i].id == statusId)
+                {
+                    return $scope.caseTypes[i].name;
+                }
+            }
+            return "Pending";
+        };
+
+        $scope.configureChartDimenstion = function(){
+
+            var casesLength = $scope.cases.length;
+
+            for(var i = 0; i < casesLength; i++){
+                $scope.cases[i].diseaseName = $scope.getDiseaseName($scope.cases[i].caseType);
+                $scope.cases[i].caseStatusName = $scope.getCaseStatusName($scope.cases[i].caseStatus);
+                //$scope.cases[i].dDate =  ...;
+                $scope.cases[i].year =  $scope.dateYearFormat($scope.cases[i].date);
+                $scope.cases[i].month = $scope.dateMonthFormat($scope.cases[i].date);
+            }
+
+            $scope.clearXDimensions();
+            $scope.casesXfilter = crossfilter($scope.cases);
+            $scope.allGroup = $scope.casesXfilter.groupAll();
+
+            $scope.diseaseBarDimension =  $scope.casesXfilter.dimension(function (d) {
+                return d.diseaseName;
+            });
+            $scope.diseaseBarGroup = $scope.diseaseBarDimension.group().reduceCount();
+
+            $scope.caseStatusBarDimension = $scope.casesXfilter.dimension(function (d) {
+                return d.caseStatusName;
+            });
+            $scope.caseStatusBarGroup = $scope.caseStatusBarDimension.group().reduceCount();
+
+
+
+            if($scope.diseaseGraphNotifierPromise != null)
+                $scope.diseaseGraphNotifierPromise.resolve({dim: $scope.diseaseBarDimension  , grp: $scope.diseaseBarGroup, all: $scope.allGroup  });
+
+            if($scope.caseStatusGraphNotifierPromise != null)
+                $scope.caseStatusGraphNotifierPromise.resolve({dim: $scope.caseStatusBarDimension  , grp: $scope.caseStatusBarGroup, all: $scope.allGroup  });
+
+
+
+            $scope.infectionCountLineDimension = $scope.casesXfilter.dimension(function (d) {
+                return d.date;
+            });
+/*
+            var infectionLineGroups = [];
+            var counter = 0;
+
+            var tempLength = $scope.diseaseTypes.length;
+
+            for(var i = 0; i < tempLength; i++){
+                if((angular.isDefined($scope.diseaseTypes[i].id)) && ($scope.diseaseTypes[i].id != null) )
+                {
+                    var _name = $scope.diseaseTypes[i].name;
+                    var grup = $scope.infectionCountLineDimension.group().reduceSum(function(d){ if(d.diseaseName == _name){return 1;} return 0;});
+                    infectionLineGroups.push(grup);
+                }
+            }*/
+
+            $scope.infGroup = $scope.infectionCountLineDimension.group().reduceCount();
+
+            if($scope.infectionCountGraphNotifierPromise != null)
+                $scope.infectionCountGraphNotifierPromise.resolve({dim: $scope.infectionCountLineDimension  , grp: $scope.infGroup , all: $scope.allGroup, year: 2014 });
+
+
+        };
+
+
+        $scope.loadChartDimensions = function(){
+            //debugger;
+
+            if(($scope.cases != null) && (angular.isArray($scope.cases)) && ($scope.cases.length > 0))
+            {
+                if(!$scope.chartInit)
+                {
+
+                    $scope.caseService.getCaseTypes().then(function(data){
+                        $scope.diseaseTypes = data;
+
+                        $scope.chartInit = true;
+                        $scope.configureChartDimenstion();
+                    });
+
+                }
+                else
+                {
+                    $scope.configureChartDimenstion();
+                }
+            }
+        };
+
+        $scope.clearXDimensions = function(){
+            $scope.casesXfilter = null;
+            $scope.allGroup = null;
+            $scope.diseaseBarDimension = null;
+        };
+
+        $scope.diseaseGraphNotifierPromise = null;
+        $scope.diseaseGraphNotifier = function(){
+            if($scope.diseaseGraphNotifierPromise == null)
+                $scope.diseaseGraphNotifierPromise = $q.defer();
+
+            return $scope.diseaseGraphNotifierPromise.promise;
+
+        };
+
+        $scope.caseStatusGraphNotifierPromise = null;
+        $scope.caseStatusGraphNotifier = function(){
+            if($scope.caseStatusGraphNotifierPromise == null)
+                $scope.caseStatusGraphNotifierPromise = $q.defer();
+
+            return $scope.caseStatusGraphNotifierPromise.promise;
+
+        };
+
+
+        $scope.infectionCountGraphNotifierPromise = null;
+        $scope.infectionCountGraphNotifier = function(){
+            if($scope.infectionCountGraphNotifierPromise == null)
+                $scope.infectionCountGraphNotifierPromise = $q.defer();
+
+            return $scope.infectionCountGraphNotifierPromise.promise;
+
+        };
+
+
+        /**************************End Charts*********************************/
 
 
 }]);

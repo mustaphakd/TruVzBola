@@ -273,6 +273,10 @@
     #casePendingleafletContainer{
         min-height: 300px;
     }
+
+    .ovrSvgVisible svg{
+        overflow: visible;
+    }
 }
 @media (min-width: 768px){
     .affix-content .container {
@@ -498,6 +502,13 @@
 
     .magnifyMap{
         min-height: 675px;!important;
+    }
+    .fullHeight{
+        height: 100%;
+    }
+
+    .fullWidth{
+        width: 100%;
     }
 
 }

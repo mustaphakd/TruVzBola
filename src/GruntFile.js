@@ -29,7 +29,10 @@ module.exports = function(grunt){
                         dest: 'css/font-awesome.min.css' },
                     {
                         src: 'bower_components/angular/angular-csp.css',
-                        dest: 'css/angular-csp.css' }
+                        dest: 'css/angular-csp.css' },
+                    {
+                        src: 'bower_components/dcjs/dc.css',
+                        dest: 'css/dc.min.css' }
                 ]
             }
         },
@@ -83,13 +86,21 @@ module.exports = function(grunt){
                     {
                         src: 'bower_components/crds-jaydata/release/jaydatamodules/angular.js',
                         dest: 'libs/jaydata-angular.min.js' },
-                    {
+                    /*{
                         src: 'bower_components/angular-d3-map/d3map.js',
                         dest: 'libs/d3map.min.js'
                     },
                     {
                         src: 'bower_components/topojson/topojson.js',
                         dest: 'libs/topojson.js'
+                    }*/
+                    {
+                        src:'bower_components/crossfilter/crossfilter.min.js',
+                        dest:'libs/crossfilter.min.js'
+                    },
+                    {
+                        src:'bower_components/dcjs/dc.min.js',
+                        dest:'libs/dc.min.js'
                     }
                 ]
             },
@@ -111,7 +122,11 @@ module.exports = function(grunt){
                         dest: 'libs/d3-tip.min.js' },
                     {
                         src: 'bower_components/angular-d3-chart-sizer/d3chartsizer.js',
-                        dest: 'libs/d3chartsizer.min.js' }
+                        dest: 'libs/d3chartsizer.min.js' },
+                    {
+                        src: 'bower_components/angular-dc/src/angular-dc.js',
+                        dest: 'libs/angular-dc.js' }
+
                 ]
             },
             imgs_mv: {
